@@ -74,7 +74,6 @@ namespace P2PLauncher.Model
             }
             Properties.Settings.Default.ServicesToDisable = toSave;
             Properties.Settings.Default.Save();
-            Properties.Settings.Default.Upgrade();
             Properties.Settings.Default.Reload();
         }
         public string[] GetServiceNamesToDisable()

@@ -50,23 +50,78 @@ namespace P2PLauncher.Model
 
         public void Enable()
         {
-            ProcessStartInfo psi =
-           new ProcessStartInfo("netsh", "interface set interface \"" + ConnectionId + "\" enable");
-            Process p = new Process();
-            p.StartInfo = psi;
-            p.StartInfo.CreateNoWindow = true;
-            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            p.Start();
+            // Try WMI first
+            try
+            {
+                var query = new SelectQuery($"SELECT * FROM Win32_NetworkAdapter WHERE DeviceID='{ID}'");
+                using (var searcher = new ManagementObjectSearcher(query))
+                {
+                    foreach (ManagementObject obj in searcher.Get())
+                    {
+                        obj.InvokeMethod("Enable", null);
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to netsh
+            }
+
+            // Fallback: netsh (requires admin)
+            var name = string.IsNullOrWhiteSpace(ConnectionId) ? Name : ConnectionId;
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            var psi = new ProcessStartInfo("netsh", "interface set interface name=\"" + name + "\" admin=enabled")
+            {
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using (var p = new Process { StartInfo = psi })
+            {
+                p.Start();
+                p.WaitForExit(5000);
+            }
         }
         public void Disable()
         {
-            ProcessStartInfo psi =
-                        new ProcessStartInfo("netsh", "interface set interface \"" + ConnectionId + "\" disable");
-            Process p = new Process();
-            p.StartInfo = psi;
-            p.StartInfo.CreateNoWindow = true;
-            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            p.Start();
+            // Try WMI first
+            try
+            {
+                var query = new SelectQuery($"SELECT * FROM Win32_NetworkAdapter WHERE DeviceID='{ID}'");
+                using (var searcher = new ManagementObjectSearcher(query))
+                {
+                    foreach (ManagementObject obj in searcher.Get())
+                    {
+                        obj.InvokeMethod("Disable", null);
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to netsh
+            }
+
+            var name = string.IsNullOrWhiteSpace(ConnectionId) ? Name : ConnectionId;
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            var psi = new ProcessStartInfo("netsh", "interface set interface name=\"" + name + "\" admin=disabled")
+            {
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using (var p = new Process { StartInfo = psi })
+            {
+                p.Start();
+                p.WaitForExit(5000);
+            }
         }
         
     }

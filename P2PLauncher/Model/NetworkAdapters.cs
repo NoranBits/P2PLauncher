@@ -84,7 +84,6 @@ namespace P2PLauncher.Model
             }
             Properties.Settings.Default.AdaptersToDisable = toSave;
             Properties.Settings.Default.Save();
-            Properties.Settings.Default.Upgrade();
             Properties.Settings.Default.Reload();
         }
 

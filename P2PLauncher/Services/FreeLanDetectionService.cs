@@ -89,7 +89,6 @@ namespace P2PLauncher.Services
         {
             Properties.Settings.Default.FreeLanExecutableLocation = path;
             Properties.Settings.Default.Save();
-            Properties.Settings.Default.Upgrade();
             Properties.Settings.Default.Reload();
         }
 
