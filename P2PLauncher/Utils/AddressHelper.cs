@@ -1,5 +1,4 @@
 ﻿using P2PLauncher.Model;
-using System;
 
 namespace P2PLauncher.Utils
 {
@@ -8,9 +7,7 @@ namespace P2PLauncher.Utils
         public static AddressType GetAddressType(string input)
         {
             ArgumentNullException.ThrowIfNull(input);
-            if (input.Contains('.', StringComparison.Ordinal))
-                return AddressType.IPV4;
-            return AddressType.UNKNOWN;
+            return input.Contains('.', StringComparison.Ordinal) ? AddressType.IPV4 : AddressType.UNKNOWN;
         }
     }
 }

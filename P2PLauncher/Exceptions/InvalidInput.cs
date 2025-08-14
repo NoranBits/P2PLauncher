@@ -1,10 +1,9 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace P2PLauncher.Exceptions
 {
     [SuppressMessage("Naming", "CA1710:Identifiers should have correct suffix", Justification = "Historical name; changing would be breaking across UI and services.")]
-    internal class InvalidInput : Exception
+    internal sealed class InvalidInput : Exception
     {
         public InvalidInput() { }
         public InvalidInput(string message) : base(message) { }

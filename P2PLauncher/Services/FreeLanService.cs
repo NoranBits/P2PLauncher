@@ -1,18 +1,19 @@
 ﻿using P2PLauncher.Exceptions;
 using P2PLauncher.Model;
 using P2PLauncher.Utils;
-using System;
 using System.Diagnostics;
 using System.IO;
 using System.ServiceProcess;
 
 namespace P2PLauncher.Services
 {
-    internal sealed class FreeLanService : IDisposable
+    internal sealed class FreeLanService(WindowsServices windowsServices,
+        FreeLanDetectionService freeLanDetectionService,
+        IDialogService dialogService) : IDisposable
     {
-        private readonly FreeLanDetectionService freeLanDetectionService;
-        private readonly IDialogService dialogService;
-        private readonly WindowsServices windowsServices;
+        private readonly FreeLanDetectionService freeLanDetectionService = freeLanDetectionService;
+        private readonly IDialogService dialogService = dialogService;
+        private readonly WindowsServices windowsServices = windowsServices;
 
         private Process? process;
 
@@ -30,7 +31,10 @@ namespace P2PLauncher.Services
         public event Action? ServiceStopped;
         public event Action<string>? OutputReceived;
 
-        public void SetPassphrase(string content) => passphrase = content ?? string.Empty;
+        public void SetPassphrase(string content)
+        {
+            passphrase = content ?? string.Empty;
+        }
 
         public void SetHostIp(string content)
         {
@@ -42,22 +46,39 @@ namespace P2PLauncher.Services
                 case AddressType.IPV4:
                     hostIp = content!;
                     break;
+                default:
+                    break;
             }
         }
 
         public void SetClientId(string content)
         {
-            if (!int.TryParse(content, out int parsed))
+            if (!int.TryParse(content, out var parsed))
+            {
                 throw new InvalidInput("ID should be an number.");
+            }
 
-            if (parsed < 2 || parsed > 253)
+            if (parsed is < 2 or > 253)
+            {
                 throw new InvalidInput("ID should be in range between 2-253.");
+            }
 
             clientId = content;
         }
-        public void SetMode(FreeLanMode c) => mode = c;
-        public void SetRelayMode(bool c) => relayMode = c ? "yes" : "no";
-        public void SetShowShell(bool c) => showShell = c;
+        public void SetMode(FreeLanMode c)
+        {
+            mode = c;
+        }
+
+        public void SetRelayMode(bool c)
+        {
+            relayMode = c ? "yes" : "no";
+        }
+
+        public void SetShowShell(bool c)
+        {
+            showShell = c;
+        }
 
         public bool IsThisValidIPForTheCurrentMode(string ip)
         {
@@ -71,27 +92,28 @@ namespace P2PLauncher.Services
             };
         }
 
-        public FreeLanService(WindowsServices windowsServices,
-            FreeLanDetectionService freeLanDetectionService,
-            IDialogService dialogService)
-        {
-            this.freeLanDetectionService = freeLanDetectionService;
-            this.dialogService = dialogService;
-            this.windowsServices = windowsServices;
-        }
-
         public bool GetFreeLanServiceStatus()
         {
-            var freeLanService = windowsServices.GetServiceByName("FreeLAN Service");
-            if (freeLanService == null) return false;
-            return freeLanService.Status == ServiceControllerStatus.Running;
+            WindowsService? freeLanService = windowsServices.GetServiceByName("FreeLAN Service");
+            return freeLanService != null && freeLanService.Status == ServiceControllerStatus.Running;
         }
 
         public void SetFreeLanServiceStatus(bool start)
         {
-            var freeLanService = windowsServices.GetServiceByName("FreeLAN Service");
-            if (freeLanService == null) return;
-            if (start) freeLanService.Enable(); else freeLanService.Disable();
+            WindowsService? freeLanService = windowsServices.GetServiceByName("FreeLAN Service");
+            if (freeLanService == null)
+            {
+                return;
+            }
+
+            if (start)
+            {
+                freeLanService.Enable();
+            }
+            else
+            {
+                freeLanService.Disable();
+            }
         }
 
         public bool IsRunning => process != null && !process.HasExited;
@@ -101,7 +123,9 @@ namespace P2PLauncher.Services
             try
             {
                 if (process != null && !process.HasExited)
+                {
                     process.Kill();
+                }
             }
             finally
             {
@@ -114,15 +138,15 @@ namespace P2PLauncher.Services
 
         public static bool GetStrangeFreeLansRunning()
         {
-            var procs = Process.GetProcessesByName("freelan");
+            Process[] procs = Process.GetProcessesByName("freelan");
             return procs.Length > 0;
         }
 
         public static bool KillStrangeFreeLan()
         {
-            bool killed = false;
-            var procs = Process.GetProcessesByName("freelan");
-            foreach (var p in procs)
+            var killed = false;
+            Process[] procs = Process.GetProcessesByName("freelan");
+            foreach (Process p in procs)
             {
                 try
                 {
@@ -140,7 +164,9 @@ namespace P2PLauncher.Services
         public bool StartFreeLan()
         {
             if (process != null && !process.HasExited)
+            {
                 throw new AlreadyRunning("Please stop it first.");
+            }
 
             if (freeLanDetectionService.GetInstallationStatus() != FreeLanInstallationStatus.OK)
             {
@@ -149,10 +175,14 @@ namespace P2PLauncher.Services
             }
 
             if (GetFreeLanServiceStatus())
+            {
                 SetFreeLanServiceStatus(false);
+            }
 
             if (GetStrangeFreeLansRunning())
-                KillStrangeFreeLan();
+            {
+                _ = KillStrangeFreeLan();
+            }
 
             if (!showShell)
             {
@@ -176,6 +206,8 @@ namespace P2PLauncher.Services
                     process.StartInfo.Arguments =
                         $"--security.passphrase {passphrase} --fscp.contact {hostIp}:12000 --tap_adapter.dhcp_proxy_enabled no --tap_adapter.ipv4_dhcp true --tap_adapter.metric 1 --debug";
                     break;
+                default:
+                    break;
             }
 
             process.StartInfo.CreateNoWindow = !showShell;
@@ -195,10 +227,13 @@ namespace P2PLauncher.Services
                 };
             }
 
-            process.Start();
+            _ = process.Start();
             if (!showShell)
+            {
                 process.BeginOutputReadLine();
-            bool running = !process.HasExited;
+            }
+
+            var running = !process.HasExited;
             if (running)
             {
                 ServiceStarted?.Invoke();

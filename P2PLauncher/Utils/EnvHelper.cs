@@ -1,15 +1,12 @@
-﻿using System;
-using System.Diagnostics;
-using System.Globalization;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Net.Http;
-using System.Net;
 using System.Security.Principal;
 
 namespace P2PLauncher.Utils
 {
-    public static class EnvHelper
+    internal static class EnvHelper
     {
         /// <summary>
         /// Get Program Files path (x64)
@@ -34,11 +31,9 @@ namespace P2PLauncher.Utils
         public static string GetMemberName<T>(Expression<Func<T>> memberExpression)
         {
             ArgumentNullException.ThrowIfNull(memberExpression);
-            if (memberExpression.Body is not MemberExpression expressionBody)
-            {
-                throw new ArgumentException("Expression body must be a MemberExpression", nameof(memberExpression));
-            }
-            return expressionBody.Member.Name;
+            return memberExpression.Body is not MemberExpression expressionBody
+                ? throw new ArgumentException("Expression body must be a MemberExpression", nameof(memberExpression))
+                : expressionBody.Member.Name;
         }
 
         public static bool Is64Bit()
@@ -67,8 +62,8 @@ namespace P2PLauncher.Utils
         {
             try
             {
-                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                string ip = http.GetStringAsync(new Uri("https://api.ipify.org")).GetAwaiter().GetResult();
+                using HttpClient http = new() { Timeout = TimeSpan.FromSeconds(5) };
+                var ip = http.GetStringAsync(new Uri("https://api.ipify.org")).GetAwaiter().GetResult();
                 return ip.Trim();
             }
             catch (HttpRequestException ex)
@@ -85,7 +80,7 @@ namespace P2PLauncher.Utils
 
         public static void OpenNotepadWithFile(string fileLocation)
         {
-            Process.Start("notepad.exe", fileLocation);
+            _ = Process.Start("notepad.exe", fileLocation);
         }
 
         public static bool FileExists(string fileLocation)

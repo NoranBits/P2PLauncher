@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Reflection;
 
 namespace P2PLauncher.Utils
@@ -11,7 +10,7 @@ namespace P2PLauncher.Utils
             ArgumentNullException.ThrowIfNull(value);
 
             Type type = value.GetType();
-            string? name = Enum.GetName(type, value);
+            var name = Enum.GetName(type, value);
             if (name is null)
             {
                 return value.ToString();
@@ -24,6 +23,7 @@ namespace P2PLauncher.Utils
             }
 
             DescriptionAttribute? attr = field.GetCustomAttribute<DescriptionAttribute>();
+            // Return the attribute description if present; fall back to the enum member name.
             return attr?.Description ?? name;
         }
     }

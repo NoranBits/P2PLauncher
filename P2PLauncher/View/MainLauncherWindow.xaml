@@ -127,6 +127,7 @@
 
                 <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="ButtonOpenLogs" Click="OnOpenLogsClick" Content="Open logs" Width="85"/>
+                    <Button Content="Diagnostics" Click="OnOpenDiagnostics" Margin="8,0,0,0" Width="85"/>
                     <Label Content="State:" Margin="12,0,0,0"/>
                     <Label x:Name="LabelStateValue" Content="Not running"/>
                 </StackPanel>

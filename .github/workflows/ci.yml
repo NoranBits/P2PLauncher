@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore P2PLauncher.sln
+
+      - name: Build
+        run: dotnet build P2PLauncher.sln -c Release --nologo /p:GenerateFullPaths=true "/consoleloggerparameters:NoSummary;ForceNoAlign"
+
+      - name: Publish Client
+        run: dotnet publish P2PLauncher/P2PLauncher.csproj -c Release -o artifacts/client/Release --nologo /p:GenerateFullPaths=true "/consoleloggerparameters:NoSummary;ForceNoAlign"
+
+      - name: Publish Server
+        run: dotnet publish apps/P2PLauncher.Server/P2PLauncher.Server.csproj -c Release -o artifacts/server/Release --nologo /p:GenerateFullPaths=true "/consoleloggerparameters:NoSummary;ForceNoAlign"
+
+      - name: Install dotnet-format
+        run: dotnet tool install -g dotnet-format
+
+      - name: Verify formatting
+        run: dotnet format --verify-no-changes
+
+      - name: Run server acceptance tests
+        run: dotnet test tests/P2PLauncher.Server.Tests -c Release --no-build --verbosity minimal
+
+      - name: Publish Standalone Client
+        run: dotnet publish apps/P2PLauncher.Standalone/P2PLauncher.Standalone.csproj -c Release -o artifacts/client/Standalone --nologo /p:GenerateFullPaths=true "/consoleloggerparameters:NoSummary;ForceNoAlign"
+
+      - name: Zip Artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Compress-Archive -Path artifacts/client/Release/* -DestinationPath artifacts/P2PLauncher-client-Release.zip -Force
+          Compress-Archive -Path artifacts/server/Release/* -DestinationPath artifacts/P2PLauncher-server-Release.zip -Force
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: artifacts/*.zip

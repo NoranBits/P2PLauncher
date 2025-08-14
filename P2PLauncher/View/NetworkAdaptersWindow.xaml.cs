@@ -1,6 +1,4 @@
 ﻿using P2PLauncher.Model;
-using System;
-using System.Collections.Generic;
 using System.Windows;
 
 namespace P2PLauncher.View
@@ -12,18 +10,18 @@ namespace P2PLauncher.View
     {
         private readonly NetworkAdapters networkAdapters;
 
-        private readonly List<NetworkAdapter> NetworkAdaptersEnabled = new List<NetworkAdapter>();
-        private readonly List<NetworkAdapter> NetworkAdaptersDisabled = new List<NetworkAdapter>();
+        private readonly List<NetworkAdapter> NetworkAdaptersEnabled = [];
+        private readonly List<NetworkAdapter> NetworkAdaptersDisabled = [];
 
-        void MoveFromEnabledToDisabled(NetworkAdapter item)
+        private void MoveFromEnabledToDisabled(NetworkAdapter item)
         {
-            NetworkAdaptersEnabled.Remove(item);
+            _ = NetworkAdaptersEnabled.Remove(item);
             NetworkAdaptersDisabled.Add(item);
             UpdateAdaptersList();
         }
-        void MoveFromDisabledToEnabled(NetworkAdapter item)
+        private void MoveFromDisabledToEnabled(NetworkAdapter item)
         {
-            NetworkAdaptersDisabled.Remove(item);
+            _ = NetworkAdaptersDisabled.Remove(item);
             NetworkAdaptersEnabled.Add(item);
             UpdateAdaptersList();
         }
@@ -42,18 +40,22 @@ namespace P2PLauncher.View
 
         private void OnMoveToDisabledButton(object sender, RoutedEventArgs e)
         {
-            int indexToMove = ListBoxNetworkAdaptersOn.SelectedIndex;
+            var indexToMove = ListBoxNetworkAdaptersOn.SelectedIndex;
             if (indexToMove == -1)
+            {
                 return;
+            }
 
             NetworkAdapter item = NetworkAdaptersEnabled[indexToMove];
             MoveFromEnabledToDisabled(item);
         }
         private void OnMoveToEnabledButton(object sender, RoutedEventArgs e)
         {
-            int indexToMove = ListBoxNetworkAdaptersOff.SelectedIndex;
+            var indexToMove = ListBoxNetworkAdaptersOff.SelectedIndex;
             if (indexToMove == -1)
+            {
                 return;
+            }
 
             NetworkAdapter item = NetworkAdaptersDisabled[indexToMove];
             MoveFromDisabledToEnabled(item);
@@ -73,9 +75,9 @@ namespace P2PLauncher.View
 
         public void UpdateWindow()
         {
-            List<NetworkAdapter> adapters = networkAdapters.GetNetworkAdapters();
-            string[] adaptersToDisable = NetworkAdapters.GetAdapterNamesToDisable();
-            
+            IReadOnlyList<NetworkAdapter> adapters = networkAdapters.GetNetworkAdapters();
+            var adaptersToDisable = NetworkAdapters.GetAdapterNamesToDisable();
+
             NetworkAdaptersEnabled.Clear();
             NetworkAdaptersDisabled.Clear();
 

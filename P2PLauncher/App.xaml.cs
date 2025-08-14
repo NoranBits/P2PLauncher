@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows;
 
 namespace P2PLauncher
@@ -11,7 +10,7 @@ namespace P2PLauncher
     {
         public App()
         {
-            Application.Current.DispatcherUnhandledException += OnDispatcherUnhandledException;
+            Current.DispatcherUnhandledException += OnDispatcherUnhandledException;
         }
 
         /// <summary>
@@ -19,8 +18,8 @@ namespace P2PLauncher
         /// </summary>
         private static void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            string errorMsg = string.Format(CultureInfo.InvariantCulture, "An unhandled exception occurred: {0}", e.Exception);
-            MessageBox.Show(errorMsg, "Unhandled Exception!", MessageBoxButton.OK, MessageBoxImage.Error);
+            var errorMsg = string.Format(CultureInfo.InvariantCulture, "An unhandled exception occurred: {0}", e.Exception);
+            _ = MessageBox.Show(errorMsg, "Unhandled Exception!", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
         }
     }

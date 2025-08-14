@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using System;
 using System.IO;
 
 namespace P2PLauncher.Services
@@ -19,7 +18,7 @@ namespace P2PLauncher.Services
 
         public UserPreferencesService()
         {
-            string appDir = AppDomain.CurrentDomain.BaseDirectory ?? ".";
+            var appDir = AppDomain.CurrentDomain.BaseDirectory ?? ".";
             prefsPath = Path.Combine(appDir, "client.defaults.json");
         }
 
@@ -29,12 +28,20 @@ namespace P2PLauncher.Services
             {
                 if (File.Exists(prefsPath))
                 {
-                    string json = File.ReadAllText(prefsPath);
-                    var obj = JsonConvert.DeserializeObject<ClientDefaults>(json);
+                    var json = File.ReadAllText(prefsPath);
+                    ClientDefaults? obj = JsonConvert.DeserializeObject<ClientDefaults>(json);
                     return obj ?? new ClientDefaults();
                 }
             }
-            catch
+            catch (IOException)
+            {
+                // ignore and fall back to defaults
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // ignore and fall back to defaults
+            }
+            catch (JsonException)
             {
                 // ignore and fall back to defaults
             }

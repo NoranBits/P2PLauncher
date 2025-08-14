@@ -1,17 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.ServiceProcess;
 
 namespace P2PLauncher.Model
 {
-    internal class WindowsServices
+    internal sealed class WindowsServices
     {
         [SuppressMessage("Performance", "CA1822:Mark members as static")]
         public List<WindowsService> GetServices()
         {
-            var windowsServices = new List<WindowsService>();
+            List<WindowsService> windowsServices = [];
 
             ServiceController[] services = ServiceController.GetServices();
 
@@ -25,18 +22,14 @@ namespace P2PLauncher.Model
         [SuppressMessage("Performance", "CA1822:Mark members as static")]
         public WindowsService? GetServiceByName(string serviceName)
         {
-            var controller = ServiceController.GetServices()
+            ServiceController? controller = ServiceController.GetServices()
                 .FirstOrDefault(sc => sc.ServiceName.Equals(serviceName, StringComparison.Ordinal));
-            if (controller == null)
-            {
-                return null;
-            }
-            return new WindowsService().FromServiceController(controller);
+            return controller == null ? null : new WindowsService().FromServiceController(controller);
         }
 
         public List<WindowsService> GetServicesWithType(ServiceType serviceType)
         {
-            var withType = new List<WindowsService>();
+            List<WindowsService> withType = [];
 
             foreach (WindowsService service in GetServices())
             {
@@ -50,8 +43,8 @@ namespace P2PLauncher.Model
 
         public List<WindowsService> GetServicesToDisable()
         {
-            string[] toDisable = GetServiceNamesToDisable();
-            var toDisableList = new List<WindowsService>();
+            var toDisable = GetServiceNamesToDisable();
+            List<WindowsService> toDisableList = [];
             foreach (WindowsService w in GetServices())
             {
                 if (toDisable.Contains(w.Name, StringComparer.Ordinal))
@@ -66,7 +59,7 @@ namespace P2PLauncher.Model
         [SuppressMessage("Performance", "CA1822:Mark members as static")]
         public void SaveServicesToDisable(List<WindowsService> services)
         {
-            string toSave = string.Join(",", services.Select(s => s.Name));
+            var toSave = string.Join(",", services.Select(s => s.Name));
             Properties.Settings.Default.ServicesToDisable = toSave;
             Properties.Settings.Default.Save();
             Properties.Settings.Default.Upgrade();
@@ -76,12 +69,8 @@ namespace P2PLauncher.Model
         [SuppressMessage("Performance", "CA1822:Mark members as static")]
         public string[] GetServiceNamesToDisable()
         {
-            string saved = Properties.Settings.Default.ServicesToDisable;
-            if (string.IsNullOrEmpty(saved))
-            {
-                return Array.Empty<string>();
-            }
-            return saved.Split(',');
+            var saved = Properties.Settings.Default.ServicesToDisable;
+            return string.IsNullOrEmpty(saved) ? [] : saved.Split(',');
         }
 
     }

@@ -1,5 +1,5 @@
-﻿using System;
-using System.Windows;
+﻿using System.Windows;
+using System.Globalization;
 
 namespace P2PLauncher.Utils
 {
@@ -8,7 +8,9 @@ namespace P2PLauncher.Utils
         public static void ShowMessageBox(Exception ex)
         {
             ArgumentNullException.ThrowIfNull(ex);
-            MessageBox.Show($"The following error has occured:\n '{ex.Message}' ", "Something went wrong!", MessageBoxButton.OK, MessageBoxImage.Error);
+            // Format using InvariantCulture and avoid string interpolation culture ambiguity
+            var message = string.Format(CultureInfo.InvariantCulture, "The following error has occurred:\n '{0}' ", ex.Message);
+            _ = MessageBox.Show(message, "Something went wrong!", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

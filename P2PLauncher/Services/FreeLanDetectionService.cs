@@ -1,31 +1,23 @@
 ﻿using P2PLauncher.Model;
 using P2PLauncher.Utils;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace P2PLauncher.Services
 {
-    internal class FreeLanDetectionService
+    internal sealed class FreeLanDetectionService(IFileService fileService, IDialogService dialogService)
     {
         private const string FreeLanExecutableLocation = "bin\\freelan.exe";
         private const string ProgramRootDir = "FreeLAN";
         private const string DownloadUrl = "https://github.com/freelan-developers/freelan/releases";
-        private readonly IFileService _fileService;
-        private readonly IDialogService dialogService;
+        private readonly IFileService _fileService = fileService;
+        private readonly IDialogService dialogService = dialogService;
 
         // Modern property-based API
         [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance API retained for compatibility")]
         public string FreeLanExecutablePath => Properties.Settings.Default.FreeLanExecutableLocation;
 
         [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance API retained for compatibility")]
-        public Uri DownloadPageUrl => new Uri(DownloadUrl);
-
-        public FreeLanDetectionService(IFileService fileService, IDialogService dialogService)
-        {
-            this._fileService = fileService;
-            this.dialogService = dialogService;
-        }
+        public Uri DownloadPageUrl => new(DownloadUrl);
 
         [SuppressMessage("Design", "CA1024:Use properties where appropriate", Justification = "Kept for backward compatibility; use FreeLanExecutablePath instead")]
         [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance API retained for compatibility")]
@@ -55,7 +47,7 @@ namespace P2PLauncher.Services
         {
             return !(Properties.Settings.Default.FreeLanExecutableLocation == null || Properties.Settings.Default.FreeLanExecutableLocation.Length == 0);
         }
-        
+
         /// <summary>
         /// Checks if path from config is valid
         /// </summary>
@@ -71,7 +63,7 @@ namespace P2PLauncher.Services
         /// <returns>True if File Dialog was not canceled.</returns>
         public bool SelectPath()
         {
-            if(dialogService.OpenFileDialog())
+            if (dialogService.OpenFileDialog())
             {
                 SetFreelanPath(dialogService.FilePath);
                 return true;
@@ -86,8 +78,15 @@ namespace P2PLauncher.Services
         /// <returns>Enum representing current installation status.</returns>
         public FreeLanInstallationStatus GetInstallationStatus()
         {
-            if (!IsConfigValid()) return FreeLanInstallationStatus.CONFIG_NOT_SET;
-            else if (!IsPathValid()) return FreeLanInstallationStatus.INVALID_PATH;
+            if (!IsConfigValid())
+            {
+                return FreeLanInstallationStatus.CONFIG_NOT_SET;
+            }
+            else if (!IsPathValid())
+            {
+                return FreeLanInstallationStatus.INVALID_PATH;
+            }
+
             return FreeLanInstallationStatus.OK;
         }
 
@@ -104,7 +103,7 @@ namespace P2PLauncher.Services
             Properties.Settings.Default.Reload();
         }
 
-        
+
         /// <summary>
         /// Tries to find FreeLan automatically.
         /// Searches through Program Files.
@@ -112,15 +111,15 @@ namespace P2PLauncher.Services
         /// <returns>True if FreeLan is found.</returns>
         public bool FindFreeLan()
         {
-            List<string> possiblePaths = new List<string>();
+            List<string> possiblePaths = [];
 
-            string pfLocation = EnvHelper.GetProgramFilesPath();
-            string pfx86Location = EnvHelper.GetProgramFilesX86Path();
+            var pfLocation = EnvHelper.GetProgramFilesPath();
+            var pfx86Location = EnvHelper.GetProgramFilesX86Path();
 
             possiblePaths.Add($"{pfLocation}\\{ProgramRootDir}\\{FreeLanExecutableLocation}");
             possiblePaths.Add($"{pfx86Location}\\{ProgramRootDir}\\{FreeLanExecutableLocation}");
 
-            foreach (string path in possiblePaths)
+            foreach (var path in possiblePaths)
             {
                 if (_fileService.CheckPath(path, true))
                 {

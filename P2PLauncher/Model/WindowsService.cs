@@ -1,11 +1,10 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.ServiceProcess;
 
 namespace P2PLauncher.Model
 {
-    internal class WindowsService
+    internal sealed class WindowsService
     {
         public string DisplayName { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
@@ -22,27 +21,32 @@ namespace P2PLauncher.Model
             return this;
         }
 
-        public override string ToString() => $"{DisplayName} - {Name} - {Type} - {Status}";
+        public override string ToString()
+        {
+            return $"{DisplayName} - {Name} - {Type} - {Status}";
+        }
 
         public void Enable()
         {
             try
             {
-                using var sc = new ServiceController(Name);
+                using ServiceController sc = new(Name);
                 if (sc.Status == ServiceControllerStatus.Running)
+                {
                     return;
+                }
+
                 sc.Start();
                 sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
             }
             catch (InvalidOperationException)
             {
-                // Fallback to net start if ServiceController fails (permissions, etc.)
                 var psi = new ProcessStartInfo("net", $"start \"{Name}\" /y")
                 {
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden
                 };
-                using Process? p = Process.Start(psi);
+                using var p = Process.Start(psi);
             }
             catch (Win32Exception)
             {
@@ -51,7 +55,7 @@ namespace P2PLauncher.Model
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden
                 };
-                using Process? p = Process.Start(psi);
+                using var p = Process.Start(psi);
             }
             catch (System.ServiceProcess.TimeoutException)
             {
@@ -63,9 +67,12 @@ namespace P2PLauncher.Model
         {
             try
             {
-                using var sc = new ServiceController(Name);
+                using ServiceController sc = new(Name);
                 if (sc.Status == ServiceControllerStatus.Stopped)
+                {
                     return;
+                }
+
                 sc.Stop();
                 sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(15));
             }
@@ -76,7 +83,7 @@ namespace P2PLauncher.Model
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden
                 };
-                using Process? p = Process.Start(psi);
+                using var p = Process.Start(psi);
             }
             catch (Win32Exception)
             {
@@ -85,7 +92,7 @@ namespace P2PLauncher.Model
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden
                 };
-                using Process? p = Process.Start(psi);
+                using var p = Process.Start(psi);
             }
             catch (System.ServiceProcess.TimeoutException)
             {

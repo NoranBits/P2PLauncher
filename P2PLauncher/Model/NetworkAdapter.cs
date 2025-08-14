@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Management;
 using System.Diagnostics.CodeAnalysis;
 
@@ -38,7 +37,10 @@ namespace P2PLauncher.Model
             return this;
         }
 
-        public override string ToString() => Name;
+        public override string ToString()
+        {
+            return Name;
+        }
 
         public void Enable()
         {

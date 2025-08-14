@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Management;
+﻿using System.Management;
 using System.Net.NetworkInformation;
 
 namespace P2PLauncher.Model
@@ -13,15 +10,15 @@ namespace P2PLauncher.Model
         /// WAN, Kernel, Bluetooth.
         /// </summary>
         private readonly string[] adaptersToIgnore =
-        {
+        [
             "WAN",
             "Kernel",
             "Bluetooth"
-        };
+        ];
 
-        public static List<string> GetTAPCurrentIP()
+        public static IReadOnlyList<string> GetTAPCurrentIP()
         {
-            var possibleAddresses = new List<string>();
+            List<string> possibleAddresses = [];
             foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
             {
                 if (ni.Description.Contains("TAP-Windows Adapter V9", StringComparison.Ordinal))
@@ -43,17 +40,17 @@ namespace P2PLauncher.Model
         /// (software and hardware)
         /// </summary>
         /// <returns>List of network adapters</returns>
-        public List<NetworkAdapter> GetNetworkAdapters(string extraQueryContent = "")
+        public IReadOnlyList<NetworkAdapter> GetNetworkAdapters(string extraQueryContent = "")
         {
-            var networkAdapters = new List<NetworkAdapter>();
-            var query = new ObjectQuery($"SELECT * FROM Win32_NetworkAdapter {extraQueryContent}");
-            using var searcher = new ManagementObjectSearcher(query);
-            var queryCollection = searcher.Get();
-            foreach (var m in queryCollection)
+            List<NetworkAdapter> networkAdapters = [];
+            ObjectQuery query = new($"SELECT * FROM Win32_NetworkAdapter {extraQueryContent}");
+            using ManagementObjectSearcher searcher = new(query);
+            ManagementObjectCollection queryCollection = searcher.Get();
+            foreach (ManagementBaseObject m in queryCollection)
             {
-                var adapter = new NetworkAdapter().FromWMI(m);
-                bool add = true;
-                foreach (string ignoreWord in adaptersToIgnore)
+                NetworkAdapter adapter = new NetworkAdapter().FromWMI(m);
+                var add = true;
+                foreach (var ignoreWord in adaptersToIgnore)
                 {
                     if (adapter.ToString().Contains(ignoreWord, StringComparison.Ordinal))
                     {
@@ -61,16 +58,18 @@ namespace P2PLauncher.Model
                     }
                 }
                 if (add)
+                {
                     networkAdapters.Add(adapter);
+                }
             }
             return networkAdapters;
         }
 
-        public static void SaveAdaptersToDisable(List<NetworkAdapter> adapters)
+        public static void SaveAdaptersToDisable(IReadOnlyList<NetworkAdapter> adapters)
         {
             ArgumentNullException.ThrowIfNull(adapters);
-            string toSave = string.Empty;
-            for (int i = 0; i < adapters.Count; i++)
+            var toSave = string.Empty;
+            for (var i = 0; i < adapters.Count; i++)
             {
                 toSave += adapters[i].Name;
                 if (i != adapters.Count - 1)
@@ -86,18 +85,13 @@ namespace P2PLauncher.Model
 
         public static string[] GetAdapterNamesToDisable()
         {
-            string saved = Properties.Settings.Default.AdaptersToDisable;
-            if (string.IsNullOrEmpty(saved))
-            {
-                return Array.Empty<string>();
-            }
-
-            return saved.Split(',');
+            var saved = Properties.Settings.Default.AdaptersToDisable;
+            return string.IsNullOrEmpty(saved) ? [] : saved.Split(',');
         }
-        public List<NetworkAdapter> GetAdaptersToDisable()
+        public IReadOnlyList<NetworkAdapter> GetAdaptersToDisable()
         {
-            string[] toDisable = GetAdapterNamesToDisable();
-            var toDisableList = new List<NetworkAdapter>();
+            var toDisable = GetAdapterNamesToDisable();
+            List<NetworkAdapter> toDisableList = [];
             foreach (NetworkAdapter w in GetNetworkAdapters())
             {
                 if (toDisable.Contains(w.Name))

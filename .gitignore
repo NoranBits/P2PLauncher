@@ -338,3 +338,104 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+# --- P2PLauncher additions ---
+# Local runtime logs and artifacts
+logs/
+*.log
+*.etl
+*.dmp
+
+# Local build archives
+*.zip
+*.7z
+*.tar
+*.gz
+
+# OS-specific cruft
+Thumbs.db
+Desktop.ini
+
+# App-specific runtime files
+/debug.txt
+/client.defaults.json
+
+# NuGet
+*.nupkg
+.nuget/packages/
+
+# .NET / Visual Studio
+bin/
+obj/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.cache
+*.vsp
+*.vspx
+*.vsmdi
+*.psess
+*.vspx
+.vs/
+TestResults/
+.xunit/
+*.nupkg
+packages/
+.nuget/packages/
+artifacts/
+out/
+dist/
+publish/
+**/Publish*/
+
+# Logs and diagnostics
+*.log
+*.etl
+*.dmp
+debug.txt
+logs/
+
+# VS Code
+.vscode/**
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# OS junk
+[Tt]humbs.db
+[Dd]esktop.ini
+*.DS_Store
+
+# Build outputs
+*.exe
+*.pdb
+*.mdb
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.msi
+
+# Generated files
+*.generated.cs
+*.g.cs
+*.g.i.cs
+*_wpftmp.csproj*
+
+# Secrets / local prefs
+client.defaults.json
+.env
+*.key
+*.pfx
+*.snk
+
+# Tools
+.retool/
+
+# Archives
+*.zip
+*.7z
+*.tar
+*.gz
