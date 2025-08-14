@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace P2PLauncher.Model
 {
-    public enum AddressType
+    internal enum AddressType
     {
-        IPV4, UNKNOWN
+        IPV4,
+        UNKNOWN
     }
 }

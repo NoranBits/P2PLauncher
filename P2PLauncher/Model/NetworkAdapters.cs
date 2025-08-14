@@ -1,34 +1,34 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
 
 namespace P2PLauncher.Model
 {
-    public class NetworkAdapters
+    internal class NetworkAdapters
     {
         /// <summary>
         /// Adapters containing the specific string should be ignored.
         /// WAN, Kernel, Bluetooth.
         /// </summary>
-        private string[] adaptersToIgnore =
+        private readonly string[] adaptersToIgnore =
         {
             "WAN",
             "Kernel",
             "Bluetooth"
         };
 
-
-        public List<string> GetTAPCurrentIP()
+        public static List<string> GetTAPCurrentIP()
         {
-            List<string> possibleAddresses = new List<string>();
-            foreach(NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+            var possibleAddresses = new List<string>();
+            foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
             {
-                if(ni.Description.Contains("TAP-Windows Adapter V9"))
+                if (ni.Description.Contains("TAP-Windows Adapter V9", StringComparison.Ordinal))
                 {
-                    foreach(UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
+                    foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
                     {
-                        if(ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                        if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
                         {
                             possibleAddresses.Add(ip.Address.ToString());
                         }
@@ -37,7 +37,7 @@ namespace P2PLauncher.Model
             }
             return possibleAddresses;
         }
-        
+
         /// <summary>
         /// Detects all network adapters installed in the system
         /// (software and hardware)
@@ -45,42 +45,38 @@ namespace P2PLauncher.Model
         /// <returns>List of network adapters</returns>
         public List<NetworkAdapter> GetNetworkAdapters(string extraQueryContent = "")
         {
-            List<NetworkAdapter> networkAdapters = new List<NetworkAdapter>();
+            var networkAdapters = new List<NetworkAdapter>();
             var query = new ObjectQuery($"SELECT * FROM Win32_NetworkAdapter {extraQueryContent}");
-            using (var searcher = new ManagementObjectSearcher(query))
+            using var searcher = new ManagementObjectSearcher(query);
+            var queryCollection = searcher.Get();
+            foreach (var m in queryCollection)
             {
-                var queryCollection = searcher.Get();
-                foreach (var m in queryCollection)
+                var adapter = new NetworkAdapter().FromWMI(m);
+                bool add = true;
+                foreach (string ignoreWord in adaptersToIgnore)
                 {
-                    var adapter = (new NetworkAdapter().FromWMI(m));
-                    bool add = true;
-                    foreach(string ignoreWord in adaptersToIgnore)
+                    if (adapter.ToString().Contains(ignoreWord, StringComparison.Ordinal))
                     {
-                        if(adapter.ToString().Contains(ignoreWord))
-                        {
-                            add = false;
-                        }
+                        add = false;
                     }
-                    if(add)
-                        networkAdapters.Add(adapter);
                 }
+                if (add)
+                    networkAdapters.Add(adapter);
             }
             return networkAdapters;
-
         }
 
-        public void SaveAdaptersToDisable(List<NetworkAdapter> adapters)
+        public static void SaveAdaptersToDisable(List<NetworkAdapter> adapters)
         {
-            string toSave = "";
-            for(int i =0; i< adapters.Count; i++)
+            ArgumentNullException.ThrowIfNull(adapters);
+            string toSave = string.Empty;
+            for (int i = 0; i < adapters.Count; i++)
             {
-
                 toSave += adapters[i].Name;
-                if(i != adapters.Count - 1)
+                if (i != adapters.Count - 1)
                 {
                     toSave += ",";
                 }
-
             }
             Properties.Settings.Default.AdaptersToDisable = toSave;
             Properties.Settings.Default.Save();
@@ -88,13 +84,12 @@ namespace P2PLauncher.Model
             Properties.Settings.Default.Reload();
         }
 
-        public string[] GetAdapterNamesToDisable()
+        public static string[] GetAdapterNamesToDisable()
         {
-            List<string> _temp = new List<string>();
             string saved = Properties.Settings.Default.AdaptersToDisable;
-            if(saved == null || saved.Length == 0)
+            if (string.IsNullOrEmpty(saved))
             {
-                return new string[0];
+                return Array.Empty<string>();
             }
 
             return saved.Split(',');
@@ -102,7 +97,7 @@ namespace P2PLauncher.Model
         public List<NetworkAdapter> GetAdaptersToDisable()
         {
             string[] toDisable = GetAdapterNamesToDisable();
-            List<NetworkAdapter> toDisableList = new List<NetworkAdapter>();
+            var toDisableList = new List<NetworkAdapter>();
             foreach (NetworkAdapter w in GetNetworkAdapters())
             {
                 if (toDisable.Contains(w.Name))

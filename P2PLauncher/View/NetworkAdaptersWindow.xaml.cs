@@ -1,24 +1,14 @@
 ﻿using P2PLauncher.Model;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace P2PLauncher.View
 {
     /// <summary>
     /// Interaction logic for NetworkAdaptersWindow.xaml
     /// </summary>
-    public partial class NetworkAdaptersWindow : Window, IWindow
+    internal partial class NetworkAdaptersWindow : Window, IWindow
     {
         private readonly NetworkAdapters networkAdapters;
 
@@ -72,19 +62,19 @@ namespace P2PLauncher.View
 
         private void UpdateAdaptersList()
         {
-            ListBoxNetworkAdaptersOff.ItemsSource = new List<Object>();
-            ListBoxNetworkAdaptersOn.ItemsSource = new List<Object>();
+            ListBoxNetworkAdaptersOff.ItemsSource = new List<object>();
+            ListBoxNetworkAdaptersOn.ItemsSource = new List<object>();
             ListBoxNetworkAdaptersOn.ItemsSource = NetworkAdaptersEnabled;
             ListBoxNetworkAdaptersOff.ItemsSource = NetworkAdaptersDisabled;
 
-            networkAdapters.SaveAdaptersToDisable(NetworkAdaptersDisabled);
+            NetworkAdapters.SaveAdaptersToDisable(NetworkAdaptersDisabled);
 
         }
 
         public void UpdateWindow()
         {
             List<NetworkAdapter> adapters = networkAdapters.GetNetworkAdapters();
-            string[] adaptersToDisable = networkAdapters.GetAdapterNamesToDisable();
+            string[] adaptersToDisable = NetworkAdapters.GetAdapterNamesToDisable();
             
             NetworkAdaptersEnabled.Clear();
             NetworkAdaptersDisabled.Clear();

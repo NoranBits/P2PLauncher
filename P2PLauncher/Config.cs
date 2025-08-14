@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace P2PLauncher
 {
-    class Config
+    internal static class Config
     {
     }
 }

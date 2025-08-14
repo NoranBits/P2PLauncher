@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace P2PLauncher.Services
 {
-    public interface IFileService
+    internal interface IFileService
     {
         bool CheckPath(string path, bool endsWithFile);
     }

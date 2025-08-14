@@ -1,34 +1,30 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace P2PLauncher.Utils
 {
-    public static class EnumHelper
+    internal static class EnumHelper
     {
         public static string GetDescription(this Enum value)
         {
+            ArgumentNullException.ThrowIfNull(value);
+
             Type type = value.GetType();
-            string name = Enum.GetName(type, value);
-            if (name != null)
+            string? name = Enum.GetName(type, value);
+            if (name is null)
             {
-                FieldInfo field = type.GetField(name);
-                if (field != null)
-                {
-                    DescriptionAttribute attr =
-                           Attribute.GetCustomAttribute(field,
-                             typeof(DescriptionAttribute)) as DescriptionAttribute;
-                    if (attr != null)
-                    {
-                        return attr.Description;
-                    }
-                }
+                return value.ToString();
             }
-            return null;
+
+            FieldInfo? field = type.GetField(name);
+            if (field is null)
+            {
+                return name;
+            }
+
+            DescriptionAttribute? attr = field.GetCustomAttribute<DescriptionAttribute>();
+            return attr?.Description ?? name;
         }
     }
 }

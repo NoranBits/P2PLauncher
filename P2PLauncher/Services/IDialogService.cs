@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace P2PLauncher.Services
 {
-    public interface IDialogService
+    internal interface IDialogService
     {
         void ShowMessage(string message, string title);
         string FilePath { get; set; }

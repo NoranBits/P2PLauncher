@@ -1,33 +1,20 @@
 ﻿using P2PLauncher.Model;
 using P2PLauncher.Services;
 using P2PLauncher.Utils;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace P2PLauncher.View
 {
     /// <summary>
     /// Interaction logic for FreeLanDetectionWindow.xaml
     /// </summary>
-    public partial class FreeLanDetectionWindow : Window, IWindow
+    internal partial class FreeLanDetectionWindow : Window, IWindow
     {
         private readonly FreeLanDetectionService freeLanDetectionService;
         private readonly IFileService fileService;
         private readonly IDialogService dialogService;
-        private bool FreeLanAutoDetectFailed = false;
+        private bool FreeLanAutoDetectFailed;
         private FreeLanInstallationStatus FreeLanInstallationStatus;
 
         private void SetStatus(string statusContent)
@@ -115,7 +102,7 @@ namespace P2PLauncher.View
             
         }
 
-        private void UpdateWindowAcknowledgeChange(FreeLanInstallationStatus newStatus)
+        private static void UpdateWindowAcknowledgeChange(FreeLanInstallationStatus newStatus)
         {
             switch (newStatus)
             {

@@ -2,172 +2,279 @@
 applyTo: workspace
 owner: NoranBits
 repo: P2PLauncher
-branch: codex/upgrade-dependencies-for-better-performance
+branch: updated
 updated: 2025-08-10
 ---
-# P2PLauncher Modernization & Upgrade Guide
+# P2PLauncher Modernization & Upgrade Solutions Playbook
 
-Goal: Make the app buildable, runnable, and maintainable on current toolchains; update dependencies; resolve merge conflicts; optionally migrate from .NET Framework 4.8 WPF to .NET 8 (Windows) WPF.
+Goal: Make the app buildable, runnable, and maintainable on current toolchains; update dependencies; resolve inconsistencies; and migrate to .NET 9 (Windows) WPF following .NET Fundamentals best practices.
 
-Read this entire guide before making changes. Run each step and commit in small, reversible increments.
+Contents:
+- 0) Current State Snapshot
+- 1) Decision Matrix (Track A: net48 stabilize, Track B: .NET 9 migrate)
+- 2) Quick Fix Now (unblocks builds immediately)
+- 3) Track B — .NET 9 WPF Migration (recommended)
+- 4) Dependency Hygiene & Central Management
+- 5) VS Code Config (launch/tasks)
+- 6) CI/CD (GitHub Actions)
+- 7) Testing & Formatting
+- 8) .NET Fundamentals Best Practices (Required)
+- 9) UI Modernization (Applied)
+- 10) Validation Checklist
+- 11) Rollback & Recovery
 
 ## 0) Current State Snapshot
-- Solution: `P2PLauncher.sln` (single WPF app).
-- Target framework: .NET Framework 4.8 (`TargetFrameworkVersion` v4.8 in `P2PLauncher.csproj`).
-- Package manager: mixed (legacy `packages.config` + a `PackageReference` for Newtonsoft.Json). This is inconsistent.
-- Dependencies: `Newtonsoft.Json` 13.0.3 (latest as of 2025-08). Uses Windows-only APIs: `System.Management`, `System.ServiceProcess`.
-- CI: `.github/workflows/dev_build.yml` uses old actions (checkout@v2, set-output), MSBuild path step, and zip action.
-- VS Code: placeholder `.vscode/launch.json` and basic tasks; no debug exe path.
-- Merge conflicts present in:
-  - `P2PLauncher\P2PLauncher.csproj`
-  - `P2PLauncher\packages.config`
-  - `changelog.md`
-- Code notes: `Model\NetworkAdapter.Disable()` contains an ellipsis placeholder; needs implementation. Settings saved via `Properties.Settings.Default` are fine; avoid repeated Upgrade().
+- Solution: `P2PLauncher.sln` (single WPF app)
+- Target framework: .NET Framework 4.8 (`TargetFrameworkVersion=v4.8`)
+- Packages: `packages.config` pins `Newtonsoft.Json` 12.0.3, but repo includes `packages/Newtonsoft.Json.13.0.3` → mismatch
+- Project references: classic `HintPath` pointing to 12.0.3
+- VS Code: `.vscode/launch.json` is a placeholder (invalid WARNINGxx props), `.vscode/tasks.json` not invoking solution properly
+- CI: workflows use old actions (`checkout@v2`, `setup-msbuild@v1.0.2`) and incomplete steps
 
-## 1) Strategy & Options
-- Option A (Fast, minimal risk): Stay on .NET Framework 4.8; clean csproj; standardize to PackageReference; keep MSBuild on Windows hosts. Pros: least code churn. Cons: framework is legacy, fewer future updates.
-- Option B (Recommended): Migrate to .NET 8 WPF (TFM `net8.0-windows`) with SDK-style project and `UseWPF=true`. Pros: supported long-term, modern toolchain, cross-CI via `dotnet` CLI, easier dependency mgmt. Cons: requires project file rewrite, add missing Windows packages, retest.
+## 1) Decision Matrix
+- Track A (fast): keep .NET Framework 4.8; fix package mismatch; standardize to PackageReference; modernize CI; keep code unchanged otherwise
+- Track B (recommended): migrate to SDK-style .NET 9 WPF (`net9.0-windows` + `UseWPF=true`); add Windows packages; modernize CI fully
 
-Pick one per your timeline. This guide covers both; do A first (stabilize) then B (modernize).
+Pick Track A to unblock quickly, then proceed to Track B on a feature branch.
 
-## 2) Prerequisites
-- Windows with latest .NET SDK 8.x installed: `dotnet --info`.
-- Git clean working tree. Create a branch.
-- Admin PowerShell when testing service/adapter operations.
+## 2) Quick Fix Now (apply first)
+Purpose: make builds deterministic in current state.
 
-Commands are for Windows PowerShell 5.1.
+1) Align Newtonsoft.Json to 13.0.3
+- Update `P2PLauncher/packages.config` to:
+```
+<?xml version="1.0" encoding="utf-8"?>
+<packages>
+  <package id="Newtonsoft.Json" version="13.0.3" targetFramework="net48" />
+</packages>
+```
+- Update `P2PLauncher/P2PLauncher.csproj` HintPath to point to `..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll`
 
-## 3) Immediate Fixes (all options)
-1) Resolve merge conflicts
-   - Files: `P2PLauncher\P2PLauncher.csproj`, `P2PLauncher\packages.config`, `changelog.md`.
-   - Keep Newtonsoft.Json at 13.0.3 consistently (either PackageReference or packages.config, not both).
-2) Repair `NetworkAdapter.Disable()`
-   - Replace the ellipsis with WMI `Disable` call mirroring `Enable()`, with `netsh` fallback.
-3) Update VS Code launch
-   - Point to the actual built exe. For .NET Framework: `bin/Debug/P2PLauncher.exe`. For .NET 8: `bin/Debug/net8.0-windows/P2PLauncher.exe`.
+2) Fix VS Code launch.json (remove WARNINGxx, set program path)
+- For net48 (temporary), use a simple external launch:
+```
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run P2PLauncher (net48 exe)",
+      "type": "csharp",
+      "request": "launch",
+      "program": "${workspaceFolder}/P2PLauncher/bin/Debug/P2PLauncher.exe",
+      "cwd": "${workspaceFolder}/P2PLauncher",
+      "console": "externalTerminal"
+    }
+  ]
+}
+```
+Note: Some VS Code C# extensions only support .NET (Core). If debugging doesn't attach on net48, run without debugger or attach to process. Track B resolves this.
 
-## 4) Option A — Stabilize on .NET Framework 4.8
-1) Convert to PackageReference (recommended even on net48)
-   - Remove `packages.config` and the `<Reference Include="Newtonsoft.Json" ...>` with `HintPath`.
-   - Ensure a single `<ItemGroup><PackageReference Include="Newtonsoft.Json" Version="13.0.3" /></ItemGroup>` in the csproj.
-   - Delete `packages/` folder from repo; restore on build.
-2) Clean classic csproj
-   - Keep `ToolsVersion` project but remove duplicate/legacy references and any merge markers.
-   - Keep WPF imports and `ProjectTypeGuids` as-is.
-3) Build & test locally
-   - `dotnet restore`; if MSBuild is required use `msbuild P2PLauncher.sln /t:Build /p:Configuration=Debug`.
-4) CI
-   - Use `actions/setup-dotnet@v4` to install 8.x SDK (for CLI tasks) and `microsoft/setup-msbuild@v2` to build net48.
-   - Replace deprecated set-output; use `$env:GITHUB_OUTPUT` file.
+3) Fix tasks.json to call the solution explicitly
+```
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/P2PLauncher.sln", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary;ForceNoAlign"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["publish", "${workspaceFolder}/P2PLauncher.sln", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary;ForceNoAlign"],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}
+```
 
-Pros: minimum code changes, quick win.
+Commit: "fix: align newtonsoft 13.0.3, repair launch/tasks for local build"
 
-## 5) Option B — Migrate to .NET 8 WPF (Recommended)
-1) Create SDK-style project
-   - New top of `P2PLauncher\P2PLauncher.csproj`:
-     - `<Project Sdk="Microsoft.NET.Sdk">`
-     - `<PropertyGroup>`:
-       - `<TargetFramework>net8.0-windows</TargetFramework>`
-       - `<UseWPF>true</UseWPF>`
-       - `<Nullable>enable</Nullable>`
-       - `<ImplicitUsings>enable</ImplicitUsings>`
-       - Optional: `<AssemblyName>P2PLauncher</AssemblyName>`, `<RootNamespace>P2PLauncher</RootNamespace>`
-     - Remove `ToolsVersion`, `ProjectTypeGuids`, explicit `References`, `Import Microsoft.CSharp.targets`, and old `ApplicationDefinition` item grammar (SDK handles WPF automatically; keep `App.xaml` as `ApplicationDefinition`).
-2) Add required Windows-only packages
-   - Add PackageReference:
-     - `System.Management`
-     - `System.ServiceProcess.ServiceController`
-     - `Newtonsoft.Json` (13.0.3) or migrate to `System.Text.Json` if desired.
-3) App config
-   - `App.config` continues to work on .NET 8 for config file redirection; if using `Settings.settings`, they remain valid. Consider `UserSecrets` only if needed.
-4) Code audit for API changes
-   - `ServiceController` and WMI usage remain; ensure admin prompts when needed (manifest or elevation path). Keep fallbacks to `net` and `netsh`.
-5) Build & run
-   - `dotnet restore; dotnet build -c Debug`.
-   - Output: `P2PLauncher\bin\Debug\net8.0-windows\P2PLauncher.exe`.
-6) Publishing options
-   - Framework-dependent: `dotnet publish -c Release -r win-x64`.
-   - Self-contained single-file (optional): `-p:PublishSingleFile=true -p:PublishTrimmed=false`.
+---
 
-## 6) Dependency Management
-- Pin versions via `Directory.Packages.props` (optional) for centralized management.
-- Check outdated: `dotnet list package --outdated`.
-- Newtonsoft.Json at 13.0.3 is current; reevaluate yearly.
-- If migrating to `System.Text.Json`, plan a separate refactor with converter parity.
+## 3) Track B — .NET 9 WPF Migration (SDK-style)
+Objective: long-term support and clean tooling.
 
-## 7) CI/CD Modernization (`.github/workflows/dev_build.yml`)
-- Replace with:
-  - `actions/checkout@v4`.
-  - `actions/setup-dotnet@v4` with `dotnet-version: 8.x`.
-  - If Option A: add `microsoft/setup-msbuild@v2` and run `msbuild`.
-  - If Option B: `dotnet build` and `dotnet publish`.
-  - Zip using PowerShell `Compress-Archive` instead of third-party action.
-  - Release with `softprops/action-gh-release@v2` or `gh release` CLI.
-- Replace deprecated `set-output` with `$GITHUB_OUTPUT`.
+1) Replace `P2PLauncher.csproj` with SDK-style
+```
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>P2PLauncher</AssemblyName>
+    <RootNamespace>P2PLauncher</RootNamespace>
+    <ApplicationIcon>community-symbol.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Management" Version="9.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="community-symbol.ico" />
+  </ItemGroup>
+</Project>
+```
+Notes:
+- SDK-style auto-includes `*.cs`, `*.xaml`. Remove explicit `<Compile>`/`<Page>` lists from classic file
+- Keep `App.config` and `Settings.settings` (they work; adjust if needed later)
 
-## 8) VS Code Configuration
-- `.vscode/launch.json` (WPF exe):
-  - `type: coreclr`, `request: launch`, `program: <path to exe>`, `cwd: ${workspaceFolder}/P2PLauncher`.
-- `.vscode/tasks.json`:
-  - Build: `dotnet build P2PLauncher.sln`.
-  - Watch (Option B): `dotnet watch --project P2PLauncher/P2PLauncher.csproj`.
+2) Build & run
+- `dotnet restore; dotnet build -c Debug`
+- Output: `P2PLauncher/bin/Debug/net9.0-windows/P2PLauncher.exe`
 
-## 9) Code Quality & Language Features
-- Enable nullable and implicit usings (Option B).
-- Add analyzers: `Microsoft.CodeAnalysis.NetAnalyzers` and enable `AnalysisMode AllEnabledByDefault`.
-- Run `dotnet format` in CI.
+3) Update VS Code launch for .NET 9
+```
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run P2PLauncher (.NET 9)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/P2PLauncher/bin/Debug/net9.0-windows/P2PLauncher.exe",
+      "cwd": "${workspaceFolder}/P2PLauncher",
+      "console": "internalConsole"
+    }
+  ]
+}
+```
+4) Validate Windows-only APIs
+- `System.Management` and `ServiceController` come via NuGet packages as referenced above
+- Admin tasks: If service/adapter operations fail, run the exe elevated (manifest or prompt)
 
-## 10) Security & Privileges
-- Service/adapter operations require elevation. Consider an app manifest requesting admin or add explicit elevation flow when needed.
-- Sanitize any user-provided paths; avoid executing arbitrary commands.
+Commit: "feat: migrate to SDK-style net9.0-windows WPF"
 
-## 11) Tests & Diagnostics
-- Add basic unit tests around settings serialization and helper utilities.
-- For integration, guard tests requiring admin with `Trait("RequiresAdmin", true)` and skip in CI.
-- Logging: add a lightweight logger (e.g., `Microsoft.Extensions.Logging`) for diagnostics.
+---
 
-## 12) Step-by-Step Plan (Checklists)
-A. Stabilize (Day 0)
-- [ ] Resolve merge conflicts in csproj, packages.config, changelog.
-- [ ] Choose Option A or B; create feature branch accordingly.
-- [ ] Fix `NetworkAdapter.Disable()` implementation.
-- [ ] Build locally with current target; update VS Code launch to point to exe.
+## 4) Dependency Hygiene & Central Management
+- Centralize with optional `Directory.Packages.props` at repo root:
+```
+<Project>
+  <ItemGroup>
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageVersion Include="System.Management" Version="9.0.0" />
+    <PackageVersion Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+  </ItemGroup>
+</Project>
+```
+- Check updates regularly: `dotnet list package --outdated`
 
-B. Modernize (Day 1–2)
-- [ ] If Option A: migrate to PackageReference, remove `packages/`.
-- [ ] If Option B: rewrite csproj to SDK-style, set `net8.0-windows`, add `UseWPF`, add required packages.
-- [ ] Enable nullable and analyzers.
-- [ ] Update CI workflow to modern actions and `dotnet build/publish`.
+## 5) VS Code Config
+- launch.json: Use the snippets above for your chosen track
+- tasks.json: use explicit solution args (see Quick Fix)
 
-C. Harden (Day 3)
-- [ ] Add `dotnet list package --outdated` gate in CI.
-- [ ] Add `dotnet test` with placeholder tests.
-- [ ] Consider packaging options (self-contained vs framework-dependent).
+## 6) CI/CD (GitHub Actions)
+Replace both `dev_build.yml` and `prod_build.yml` with a single parameterized workflow (example simplified):
+```
+name: CI
+on:
+  push:
+    branches: [ updated ]
+    tags:
+      - "*.debug"
+      - "*.prod"
+  workflow_dispatch:
 
-D. Release
-- [ ] Tag prerelease and verify artifact starts on a clean Windows VM.
-- [ ] Update `README.md` and `changelog.md` with migration notes.
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet restore .\P2PLauncher.sln
+          dotnet build .\P2PLauncher.sln -c Release --nologo
+      - name: Publish (win-x64)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          dotnet publish .\P2PLauncher\P2PLauncher.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false -o out
+          Compress-Archive -Path out\* -DestinationPath artifact.zip -Force
+      - name: Upload Artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: P2PLauncher
+          path: artifact.zip
+```
+For Track A add `microsoft/setup-msbuild@v2` and call `msbuild` if `dotnet build` fails.
 
-## 13) Known Pitfalls
-- WPF on .NET 8 requires `UseWPF=true`; missing this causes XAML build failures.
-- `System.Management` and `System.ServiceProcess.ServiceController` must be NuGet packages on .NET 8.
-- Classic `App.config` binding redirects are not needed the same way on .NET 8.
-- Admin elevation: without it, service/adapter commands will fail silently or throw.
+## 7) Testing & Formatting
+- Add test project later (MSTest or xUnit); for now add format/analyzers in CI:
+  - `dotnet tool update -g dotnet-format`
+  - `dotnet format --verify-no-changes` (or `--severity info` initially)
+- Enable analyzers via PackageReference (included above) and consider ruleset:
+```
+<PropertyGroup>
+  <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+</PropertyGroup>
+```
 
-## 14) Rollback Strategy
-- Each step is a separate commit. To rollback, revert the last commit or re-target `net48` and restore the classic csproj.
-- Keep `Option A` branch as a fallback if `Option B` hits unexpected blockers.
+## 8) .NET Fundamentals Best Practices (Required)
+Adopt these across the solution. References: dotnet/fundamentals (globalization, diagnostics, code analysis, performance).
 
-## 15) Ownership & Next Actions
-- create agent as: one engineer for project structure, one for CI, one for runtime testing.
-- Open issues:
-  - Implement `NetworkAdapter.Disable()` WMI call.
-  - Decide on Option A vs B.
-  - Update `.vscode/launch.json` to real exe path.
-  - Replace deprecated actions in workflow.
+- Code Analysis & EditorConfig
+  - Keep `<AnalysisMode>AllEnabledByDefault</AnalysisMode>` and add a root `.editorconfig` to set severity (e.g., CA1305/CA1307 warning, CA2000 error, CA1822 silent). Enable nullable and implicit usings (already set in csproj).
+- Globalization & Culture
+  - Use `CultureInfo.InvariantCulture` for formatting/parsing not intended for UI. Prefer `string.Contains(..., StringComparison.Ordinal)` and explicit `OrdinalIgnoreCase` where needed.
+- Networking
+  - Replace `WebClient` with a single, long-lived `HttpClient` (done: `EnvHelper.GetPublicAddress` now uses `HttpClient` with Uri overload). Set `Timeout` and catch `HttpRequestException`/`TaskCanceledException`.
+- Resource Management & Dispose
+  - Implement proper dispose patterns for types owning timers/processes/streams (done: `MainLauncherWindow` + `FreeLanService`). Prefer `using` on `Process.Start` results.
+- Exceptions & Input Validation
+  - Validate public parameters (use `ArgumentNullException.ThrowIfNull`). Avoid broad `catch (Exception)`; catch specific exceptions.
+- Localization
+  - Add `NeutralResourcesLanguage("en-US")` to assembly (AssemblyInfo or csproj). Use resources for UI text if localizing later.
+- Packaging
+  - Prefer `SelfContained=false` for WPF; consider `PublishSingleFile=false` to avoid loading issues with WPF/XAML on trim. Do not enable trimming for WPF.
 
-References:
-- .NET 8 WPF docs: https://learn.microsoft.com/dotnet/desktop/wpf/
+## 9) UI Modernization (Applied)
+Simplify flows and reduce user error.
+
+- Separate Host vs Client tabs with clear labels. Removed advanced Hub tab from main flow.
+- One-click client start: Host IPv4, Id, Password, Relay checkbox, Start button.
+- Convenience: "Paste" button for IPv4; auto-prefill from Clipboard if it looks like IPv4.
+- Persistence: Added `UserPreferencesService` (JSON) to save client defaults (Host/Password/Id/Relay/Debug) when "Save for next time" is checked.
+- Diagnostics: Optional Debug screen, Open logs button.
+
+Follow-ups:
+- Style pass with modern WPF themes (e.g., MahApps/FluentWPF) if desired.
+- Add basic validation highlights (red border) for invalid IPv4/Id ranges.
+
+## 10) Validation Checklist
+- [ ] Local build succeeds (Debug/Release)
+- [ ] App launches and basic UI renders
+- [ ] Newtonsoft.Json resolves from NuGet, no `packages/` in repo (if using PackageReference)
+- [ ] VS Code debug/run works for chosen track
+- [ ] CI builds on `windows-latest` and uploads artifact on tag
+
+## 11) Rollback & Recovery
+- Each major step in its own commit/branch
+- To rollback migration, restore classic csproj from prior commit and retarget `net48`
+- Keep Track A branch as a long-lived fallback until Track B is proven
+
+---
+
+Notes & Pitfalls
+- WPF on .NET 9 requires `<UseWPF>true</UseWPF>`; missing this breaks XAML build
+- Ensure `System.Management` and `System.ServiceProcess.ServiceController` are explicitly referenced via NuGet on .NET 9
+- Admin privileges: service/network operations often require elevation; test as Admin
+
+References
+- WPF on .NET: https://learn.microsoft.com/dotnet/desktop/wpf/
 - SDK-style projects: https://learn.microsoft.com/dotnet/core/project-sdk/overview
 - Windows-specific TFMs: https://learn.microsoft.com/dotnet/core/project-sdk/overview#use-platform-specific-apis
 - Newtonsoft.Json: https://www.newtonsoft.com/json

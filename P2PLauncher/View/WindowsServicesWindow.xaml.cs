@@ -1,29 +1,21 @@
 ﻿using P2PLauncher.Model;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using System.Globalization;
 
 namespace P2PLauncher.View
 {
     /// <summary>
     /// Interaction logic for WindowsServicesWindow.xaml
     /// </summary>
-    public partial class WindowsServicesWindow : Window, IWindow
+    internal partial class WindowsServicesWindow : Window, IWindow
     {
         private readonly WindowsServices windowsServices;
 
-        private readonly List<WindowsService> windowsServicesEnabled = new List<WindowsService>();
-        private readonly List<WindowsService> windowsServicesDisabled = new List<WindowsService>();
+        private readonly List<WindowsService> windowsServicesEnabled = new();
+        private readonly List<WindowsService> windowsServicesDisabled = new();
 
         private readonly string[] servicesToInclude =
         {
@@ -33,8 +25,8 @@ namespace P2PLauncher.View
             "Virtual Private Network"
 
         };
-        private bool commonFilter = false;
-        private string filterWith;
+        private bool commonFilter;
+        private string filterWith = string.Empty;
 
         public WindowsServicesWindow()
         {
@@ -44,20 +36,18 @@ namespace P2PLauncher.View
             UpdateWindow();
         }
 
-        void MoveFromEnabledToDisabled(WindowsService item)
+        private void MoveFromEnabledToDisabled(WindowsService item)
         {
             windowsServicesEnabled.Remove(item);
             windowsServicesDisabled.Add(item);
             UpdateAdaptersList();
         }
-        void MoveFromDisabledToEnabled(WindowsService item)
+        private void MoveFromDisabledToEnabled(WindowsService item)
         {
             windowsServicesDisabled.Remove(item);
             windowsServicesEnabled.Add(item);
             UpdateAdaptersList();
         }
-
-
 
         private void OnMoveToDisabledButton(object sender, RoutedEventArgs e)
         {
@@ -65,7 +55,7 @@ namespace P2PLauncher.View
             if (indexToMove == -1)
                 return;
 
-            WindowsService item = windowsServicesEnabled[indexToMove];
+            var item = windowsServicesEnabled[indexToMove];
             MoveFromEnabledToDisabled(item);
         }
         private void OnMoveToEnabledButton(object sender, RoutedEventArgs e)
@@ -74,15 +64,15 @@ namespace P2PLauncher.View
             if (indexToMove == -1)
                 return;
 
-            WindowsService item = windowsServicesDisabled[indexToMove];
+            var item = windowsServicesDisabled[indexToMove];
             MoveFromDisabledToEnabled(item);
 
         }
 
         private void UpdateAdaptersList()
         {
-            ListBoxWindowsServicesOff.ItemsSource = new List<Object>();
-            ListBoxWindowsServicesOn.ItemsSource = new List<Object>();
+            ListBoxWindowsServicesOff.ItemsSource = new List<object>();
+            ListBoxWindowsServicesOn.ItemsSource = new List<object>();
             ListBoxWindowsServicesOn.ItemsSource = windowsServicesEnabled;
             ListBoxWindowsServicesOff.ItemsSource = windowsServicesDisabled;
 
@@ -92,13 +82,13 @@ namespace P2PLauncher.View
 
         public void UpdateWindow()
         {
-            List<WindowsService> services = windowsServices.GetServices();
-            string[] servicesToDisable = windowsServices.GetServiceNamesToDisable();
+            var services = windowsServices.GetServices();
+            var servicesToDisable = windowsServices.GetServiceNamesToDisable();
 
             windowsServicesEnabled.Clear();
             windowsServicesDisabled.Clear();
 
-            foreach (WindowsService service in services)
+            foreach (var service in services)
             {
 
                 if (servicesToDisable.Contains(service.Name))
@@ -107,9 +97,9 @@ namespace P2PLauncher.View
                 }
                 else
                 {
-                    if (filterWith != null)
+                    if (!string.IsNullOrEmpty(filterWith))
                     {
-                        if (!service.ToString().ToLower().Contains(filterWith))
+                        if (!service.ToString().Contains(filterWith, StringComparison.OrdinalIgnoreCase))
                         {
                             continue;
                         }
@@ -118,7 +108,7 @@ namespace P2PLauncher.View
                     bool addToTheList = !commonFilter;
                     foreach (string filter in servicesToInclude)
                     {
-                        if (service.ToString().Contains(filter))
+                        if (service.ToString().Contains(filter, StringComparison.Ordinal))
                         {
                             addToTheList = true;
                         }
@@ -138,7 +128,7 @@ namespace P2PLauncher.View
 
         private void TextBoxSearch_KeyUp(object sender, KeyEventArgs e)
         {
-            filterWith = TextBoxSearch.Text.ToLower();
+            filterWith = TextBoxSearch.Text ?? string.Empty;
             UpdateWindow();
         }
 

@@ -3,130 +3,134 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-        xmlns:local="clr-namespace:P2PLauncher.View"
         mc:Ignorable="d"
-        Title="MainLauncherWindow" Height="346" Width="800"
-        ResizeMode="NoResize" Closing="Window_Closing"
-        >
-    <Grid>
-        <GroupBox Header="Information" HorizontalAlignment="Left" Height="297" Margin="405,10,0,0" VerticalAlignment="Top" Width="379">
-            <Grid HorizontalAlignment="Left" Margin="0,0,-2,0" Width="369">
-                <!-- FreeLan status -->
-                <Label Content="FreeLAN status: " HorizontalAlignment="Left" VerticalAlignment="Top"/>
-                <Label x:Name="LabelFreeLanStatusValue" Content="Status" HorizontalAlignment="Left" Margin="87,0,0,0" VerticalAlignment="Top"/>
-                <Button Click="OnOpenFreeLanSettingsButton" Content="Configure" x:Name="ButtonOpenFreeLanSettings" HorizontalAlignment="Left" Margin="284,3,0,0" VerticalAlignment="Top" Width="75"/>
+        Title="P2P Launcher" Height="420" Width="860"
+        ResizeMode="NoResize" Closing="Window_Closing">
+    <Grid Margin="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="420"/>
+        </Grid.ColumnDefinitions>
 
-                <!-- Adapters settings-->
-                <Label Content="Adapters to disable:" HorizontalAlignment="Left" Margin="0,26,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="LabelAdaptersToDisableValue" Content="20" HorizontalAlignment="Left" Margin="115,26,0,0" VerticalAlignment="Top"/>
-                <Button Click="OnOpenAdaptersSettingsButton" x:Name="ButtonOpenAdaptersSettings" Content="Configure" HorizontalAlignment="Left" Margin="284,29,0,0" VerticalAlignment="Top" Width="75"/>
-
-                <!-- Services settings-->
-                <Label Content="Services to disable:" HorizontalAlignment="Left" Margin="0,51,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="LabelServicesToDisableValue" Content="20" HorizontalAlignment="Left" Margin="110,51,0,0" VerticalAlignment="Top"/>
-                <Button Click="OnOpenServicesSettingsButton" x:Name="ButtonOpenServicesSettings" Content="Configure" HorizontalAlignment="Left" Margin="284,54,0,0" VerticalAlignment="Top" Width="75"/>
-
-                <!-- Public address-->
-                <Label Content="Public address to use:" HorizontalAlignment="Left" Margin="0,77,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="LabelPublicAddress" Content="0.0.0.0" HorizontalAlignment="Left" Margin="125,77,0,0" VerticalAlignment="Top" Width="154"/>
-                <Button x:Name="ButtonCopyPublicAddress" Click="OnCopyPublicAddressClick" Content="Copy" HorizontalAlignment="Left" Margin="284,80,0,0" VerticalAlignment="Top" Width="75"/>
-
-                <!-- FreeLan address-->
-                <Label Content="Your FreeLAN address to use:" HorizontalAlignment="Left" Margin="0,103,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="LabelFreeLANAddress" Content="None" HorizontalAlignment="Left" Margin="160,103,0,0" VerticalAlignment="Top" Width="199"/>
-                <Label Visibility="Hidden" x:Name="LabelFreeLANAddressTip" Content="More than 1 TAP adapter found, showing possible IPs." HorizontalAlignment="Left" Margin="0,129,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic"/>
-
-
-                <!-- Debug -->
-                <CheckBox x:Name="CheckBoxDebug" Content="Debug screen" HorizontalAlignment="Left" Margin="266,254,0,0" VerticalAlignment="Top"/>
-                <Button x:Name="ButtonOpenLogs" Click="OnOpenLogsClick" Content="Open logs" HorizontalAlignment="Left" Margin="284,229,0,0" VerticalAlignment="Top" Width="75"/>
-
-                <!-- State -->
-                <Label Content="State:" HorizontalAlignment="Left" Margin="0,248,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="LabelStateValue" Content="Not running" HorizontalAlignment="Left" Margin="40,248,0,0" VerticalAlignment="Top"/>
-            </Grid>
-        </GroupBox>
-        <TabControl HorizontalAlignment="Left" Height="297" Margin="10,10,0,0" VerticalAlignment="Top" Width="390">
+        <!-- Left: Actions -->
+        <TabControl Grid.Column="0">
             <TabItem Header="Host">
-                <Grid Background="#FFE5E5E5">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="31*"/>
-                        <ColumnDefinition Width="97*"/>
-                    </Grid.ColumnDefinitions>
-                    <!-- Buttons Start/Stop -->
-                    <Button Content="Start" Click="OnHostStartClick" HorizontalAlignment="Left" Margin="125.667,239,0,0" VerticalAlignment="Top" Width="75" Grid.Column="1"/>
-                    <Button Content="Stop" Click="OnFreeLanStopClick" HorizontalAlignment="Left" Margin="205.667,239,0,0" VerticalAlignment="Top" Width="75" Grid.Column="1"/>
+                <Grid Background="#FAFAFA" Margin="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Password -->
-                    <Label Content="Password:" HorizontalAlignment="Left" Margin="11,15,0,0" VerticalAlignment="Top"/>
-                    <TextBox x:Name="TextBoxHostPassword" HorizontalAlignment="Left" Height="23" Margin="76,18,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" Grid.ColumnSpan="2"/>
-                    <Label Content="Enter the password, clients will need to enter to join to you." HorizontalAlignment="Left" Margin="11,41,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Label Content="Password:" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TextBoxHostPassword" Width="180" Margin="6,0"/>
+                        <CheckBox x:Name="CheckBoxHostRelay" Content="Relay mode" IsChecked="True"/>
+                    </StackPanel>
 
-                    <!-- Relay -->
-                    <CheckBox x:Name="CheckBoxHostRelay" IsChecked="True" Content="Relay mode" HorizontalAlignment="Left" Margin="11,69,0,0" VerticalAlignment="Top"/>
-                    <Label Content="Relay Mode: Enabled for hosts by default (Advanced)" HorizontalAlignment="Left" Margin="10,84,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
+                    <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
+                        <Button Content="Start Host" Click="OnHostStartClick" Width="110"/>
+                        <Button Content="Stop" Click="OnFreeLanStopClick" Margin="8,0,0,0" Width="80"/>
+                        <CheckBox x:Name="CheckBoxDebug" Content="Debug screen" Margin="16,0,0,0"/>
+                    </StackPanel>
 
-                    <!-- Tips -->
-                    <Label Content="Your IP as host will be: 9.0.0.1" HorizontalAlignment="Left" Margin="11,127,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
-                    <Label Content="If no one can connect to you, try to forward port 12000 UDP" HorizontalAlignment="Left" Margin="10,150,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
-
+                    <TextBlock Grid.Row="2" TextWrapping="Wrap" Foreground="#666">
+                        Your IP as host will be: 9.0.0.1
+                        &#x0a;If clients cannot connect, forward UDP port 12000.
+                    </TextBlock>
                 </Grid>
             </TabItem>
             <TabItem Header="Client">
-                <Grid Background="#FFE5E5E5">
-                    <!-- Buttons Start/Stop -->
-                    <Button Content="Start" Click="OnClientStartClick" HorizontalAlignment="Left" Margin="220,239,0,0" VerticalAlignment="Top" Width="74"/>
-                    <Button Content="Stop" Click="OnFreeLanStopClick"  HorizontalAlignment="Left" Margin="299,239,0,0" VerticalAlignment="Top" Width="75"/>
+                <Grid Background="#FAFAFA" Margin="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <!-- Host -->
-                    <Label Content="Host:" HorizontalAlignment="Left" Margin="14,11,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
-                    <TextBox x:Name="TextBoxClientHost" HorizontalAlignment="Left" Height="23" Margin="60,14,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" Grid.Column="1"/>
-                    <Label Content="Enter host's public address here. IPv4 supported." HorizontalAlignment="Left" Margin="14,37,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Label Content="Host IPv4:" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TextBoxClientHost" Width="160" Margin="6,0"/>
+                        <Button Content="Paste" Click="OnPasteHostIpClick" Width="60"/>
+                    </StackPanel>
 
-                    <!-- Id -->
-                    <TextBox x:Name="TextBoxId" HorizontalAlignment="Left" Height="23" Margin="60,65,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120" Grid.Column="1"/>
-                    <Label Content="Id:" HorizontalAlignment="Left" Margin="14,62,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
-                    <Label Content="Enter your ID 1-240, You will be indentificated with it." HorizontalAlignment="Left" Margin="14,88,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
+                    <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
+                        <Label Content="Id:" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TextBoxId" Width="80" Margin="6,0"/>
+                        <Label Content="Password:" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                        <TextBox x:Name="TextBoxClientPassword" Width="140" Margin="6,0"/>
+                    </StackPanel>
 
-                    <!-- Password -->
-                    <Label Content="Password:" HorizontalAlignment="Left" Margin="14,116,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
-                    <Label Content="Enter host's password here." HorizontalAlignment="Left" Margin="14,142,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
-                    <TextBox x:Name="TextBoxClientPassword" HorizontalAlignment="Left" Height="23" Margin="76,119,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120"/>
+                    <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,8">
+                        <CheckBox x:Name="CheckBoxClientRelay" Content="Relay mode"/>
+                        <CheckBox x:Name="CheckBoxRememberClient" Content="Save for next time" Margin="16,0,0,0"/>
+                    </StackPanel>
 
-                    <!-- Relay -->
-                    <CheckBox x:Name="CheckBoxClientRelay" IsChecked="False" Content="Relay mode" HorizontalAlignment="Left" Margin="14,170,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
-                    <Label Content="Relay Mode: Disabled for clients by default (Advanced)" HorizontalAlignment="Left" Margin="10,185,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic"/>
+                    <TextBlock Grid.Row="3" TextWrapping="Wrap" Foreground="#666">
+                        One click &amp; go: Fill host IPv4, your Id and password, then press Start.
+                    </TextBlock>
 
-                </Grid>
-            </TabItem>
-            <TabItem Header="Hub">
-                <Grid Background="#FFE5E5E5">
-                    <!-- Hub address/host -->
-                    <Label Content="Hub address:" HorizontalAlignment="Left" Margin="14,11,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
-                    <TextBox x:Name="TextBoxHubHost" HorizontalAlignment="Left" Height="23" Margin="98,14,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120"/>
-                    <Label Content="Enter hub's public address here. IPv4 supported." HorizontalAlignment="Left" Margin="14,37,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic" Grid.ColumnSpan="2"/>
-
-                    <!--Password-->
-                    <Label Content="Password:" HorizontalAlignment="Left" Margin="14,65,0,0" VerticalAlignment="Top"/>
-                    <TextBox x:Name="TextBoxHubPassword" HorizontalAlignment="Left" Height="23" Margin="81,68,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120"/>
-                    <Label Content="Enter hub's password here." HorizontalAlignment="Left" Margin="14,91,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic"/>
-
-                    <!-- Buttons Start/Stop -->
-                    <Button Content="Start" Click="OnHubStartClick" HorizontalAlignment="Left" Margin="220,239,0,0" VerticalAlignment="Top" Width="74"/>
-                    <Button Content="Stop" Click="OnFreeLanStopClick"  HorizontalAlignment="Left" Margin="299,239,0,0" VerticalAlignment="Top" Width="75"/>
-
-                    <!-- Tips -->
-                    <Label Content="What are HUBs?&#10;Hubs are networks ran by a communities that allow clients to join and connect with others without needing to rely on UPnP or Port Forwarding.&#10;Don't be alarmed if your internet cuts out for a moment when joining a HUB!&#10;This is normal as it takes a few moments to receive an IP address from their&#10;DHCP server." HorizontalAlignment="Left" Margin="11,127,0,0" VerticalAlignment="Top" FontSize="10" FontStyle="Italic"/>
-
-                </Grid>
-            </TabItem>
-            <TabItem Header="Donators">
-                <Grid Background="#FFE5E5E5">
-                    <Label Content="Thank you:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
-                    <Label x:Name="LabelDonators" Content="Please Wait..." HorizontalAlignment="Left" Margin="10,36,0,0" VerticalAlignment="Top"/>
+                    <StackPanel Orientation="Horizontal" Grid.Row="4">
+                        <Button Content="Start Client" Click="OnClientStartClick" Width="110"/>
+                        <Button Content="Stop" Click="OnFreeLanStopClick" Margin="8,0,0,0" Width="80"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>
+
+        <!-- Right: Information -->
+        <GroupBox Grid.Column="1" Header="Information" Margin="12,0,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="FreeLAN status:"/>
+                    <Label x:Name="LabelFreeLanStatusValue" Content="Status"/>
+                    <Button Click="OnOpenFreeLanSettingsButton" Content="Configure" Margin="8,0,0,0" Width="85"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal">
+                    <Label Content="Adapters to disable:"/>
+                    <Label x:Name="LabelAdaptersToDisableValue" Content="0"/>
+                    <Button Click="OnOpenAdaptersSettingsButton" Content="Configure" Margin="8,0,0,0" Width="85"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal">
+                    <Label Content="Services to disable:"/>
+                    <Label x:Name="LabelServicesToDisableValue" Content="0"/>
+                    <Button Click="OnOpenServicesSettingsButton" Content="Configure" Margin="8,0,0,0" Width="85"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Orientation="Horizontal">
+                    <Label Content="Public address:"/>
+                    <Label x:Name="LabelPublicAddress" Content="0.0.0.0" Width="160"/>
+                    <Button x:Name="ButtonCopyPublicAddress" Click="OnCopyPublicAddressClick" Content="Copy" Width="60"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="4">
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Your FreeLAN IP:"/>
+                        <Label x:Name="LabelFreeLANAddress" Content="None" Width="200"/>
+                    </StackPanel>
+                    <Label Visibility="Hidden" x:Name="LabelFreeLANAddressTip" Content="More than 1 TAP adapter found, showing possible IPs." FontSize="10" FontStyle="Italic"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="ButtonOpenLogs" Click="OnOpenLogsClick" Content="Open logs" Width="85"/>
+                    <Label Content="State:" Margin="12,0,0,0"/>
+                    <Label x:Name="LabelStateValue" Content="Not running"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
     </Grid>
 </Window>

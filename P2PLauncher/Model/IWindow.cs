@@ -10,7 +10,7 @@ namespace P2PLauncher.Model
     /// Enforce every window to have a simple set of functions.
     /// To maintain code readability.
     /// </summary>
-    public interface IWindow
+    internal interface IWindow
     {
         void UpdateWindow();
     }

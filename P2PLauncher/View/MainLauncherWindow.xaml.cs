@@ -1,9 +1,11 @@
 ﻿using P2PLauncher.Exceptions;
 using P2PLauncher.Model;
 using P2PLauncher.Services;
+using P2PLauncher.Properties;
 using P2PLauncher.Utils;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,13 +19,15 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Diagnostics.CodeAnalysis;
 
 namespace P2PLauncher.View
 {
+    [SuppressMessage("Design", "CA1515:Consider making public types internal", Justification = "WPF Window type referenced by XAML and app entrypoint.")]
     /// <summary>
     /// Interaction logic for MainLauncherWindow.xaml
     /// </summary>
-    public partial class MainLauncherWindow : Window, IWindow
+    public sealed partial class MainLauncherWindow : Window, IWindow, IDisposable
     {
         private readonly FreeLanDetectionService freeLanDetectionService;
         private readonly NetworkAdapters networkAdapters;
@@ -31,9 +35,11 @@ namespace P2PLauncher.View
         private readonly IFileService fileService;
         private readonly IDialogService dialogService;
         private readonly FreeLanService freeLanService;
-        private DispatcherTimer processCheck;
-        private DispatcherTimer freeLanAddressCheck;
-        private readonly string donators = "Striderstroke";
+        private readonly UserPreferencesService userPrefs = new UserPreferencesService();
+        private DispatcherTimer processCheck = new DispatcherTimer();
+        private DispatcherTimer freeLanAddressCheck = new DispatcherTimer();
+        private readonly string donators = "Striderstroke"; // retained for compatibility
+        private bool _disposed;
 
 
         public MainLauncherWindow()
@@ -57,6 +63,24 @@ namespace P2PLauncher.View
             {
                 MessageBox.Show("To use this application you will need administrator privileges!");
                 System.Environment.Exit(0);
+            }
+
+            // Load saved client defaults
+            var saved = userPrefs.LoadClient();
+            TextBoxClientHost.Text = string.IsNullOrWhiteSpace(saved.Host) ? TextBoxClientHost.Text : saved.Host;
+            TextBoxClientPassword.Text = string.IsNullOrWhiteSpace(saved.Password) ? TextBoxClientPassword.Text : saved.Password;
+            TextBoxId.Text = string.IsNullOrWhiteSpace(saved.Id) ? TextBoxId.Text : saved.Id;
+            CheckBoxClientRelay.IsChecked = saved.Relay;
+            CheckBoxDebug.IsChecked = saved.ShowDebug;
+
+            // Attempt to prefill host IPv4 from clipboard if empty and looks like IPv4
+            if (string.IsNullOrWhiteSpace(TextBoxClientHost.Text) && Clipboard.ContainsText())
+            {
+                var txt = Clipboard.GetText();
+                if (TryGetIPv4(txt, out var ip))
+                {
+                    TextBoxClientHost.Text = ip;
+                }
             }
 
             UpdateWindow();
@@ -92,9 +116,9 @@ namespace P2PLauncher.View
         {
             LabelStateValue.Content = content;
         }
-        private void SetDonatorsLabel(string content)
+        private static void SetDonatorsLabel(string content)
         {
-            LabelDonators.Content = content;
+            // Removed Donators UI from XAML; keep method for compatibility, but no-op
         }
         #endregion
 
@@ -106,8 +130,8 @@ namespace P2PLauncher.View
         }
         public void UpdateNumbers()
         {
-            SetAdaptersToDisableValueLabel(networkAdapters.GetAdapterNamesToDisable().Length.ToString());
-            SetServicesToDisableValueLabel(windowsServices.GetServiceNamesToDisable().Length.ToString());
+            SetAdaptersToDisableValueLabel(NetworkAdapters.GetAdapterNamesToDisable().Length.ToString(CultureInfo.InvariantCulture));
+            SetServicesToDisableValueLabel(windowsServices.GetServiceNamesToDisable().Length.ToString(CultureInfo.InvariantCulture));
             SetPublicAddressValueLabel(EnvHelper.GetPublicAddress());
 
 
@@ -116,7 +140,7 @@ namespace P2PLauncher.View
 
         private bool UpdateFreeLANAddress()
         {
-            List<string> tapIps = networkAdapters.GetTAPCurrentIP();
+            List<string> tapIps = NetworkAdapters.GetTAPCurrentIP();
             for(int i = tapIps.Count - 1; i>=0; i--)
             {
                 if(!freeLanService.IsThisValidIPForTheCurrentMode(tapIps[i]))
@@ -153,10 +177,11 @@ namespace P2PLauncher.View
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (freeLanService.process != null && !freeLanService.process.HasExited)
+            if (freeLanService.IsRunning)
             {
                 OnFreeLanStop();
             }
+            Dispose();
         }
 
         #endregion
@@ -222,40 +247,17 @@ namespace P2PLauncher.View
 
         private void OnHubStartClick(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                freeLanService.SetMode(FreeLanMode.CLIENT_HUB);
-                freeLanService.SetPassphrase(TextBoxHubPassword.Text);
-                freeLanService.SetHostIp(TextBoxHubHost.Text);
-                freeLanService.SetShowShell(CheckBoxDebug.IsChecked.Value);
-
-                OnCommonStart();
-
-                bool started = freeLanService.StartFreeLan();
-                if (started)
-                {
-                    SetStateValueLabel("Hub - running.");
-                    StartProcessCheck();
-                }
-            }
-            catch (Exception ex)
-            {
-                if (ex is InvalidInput || ex is AlreadyRunning)
-                {
-                    ExceptionHelper.ShowMessageBox(ex);
-                    return;
-                }
-                throw;
-            }
+            MessageBox.Show("Hub mode is no longer available in the simplified UI.");
         }
+
         private void OnHostStartClick(object sender, RoutedEventArgs e)
         {
             try
             {
                 freeLanService.SetMode(FreeLanMode.HOST);
                 freeLanService.SetPassphrase(TextBoxHostPassword.Text);
-                freeLanService.SetRelayMode(CheckBoxHostRelay.IsChecked.Value);
-                freeLanService.SetShowShell(CheckBoxDebug.IsChecked.Value);
+                freeLanService.SetRelayMode(CheckBoxHostRelay.IsChecked.GetValueOrDefault());
+                freeLanService.SetShowShell(CheckBoxDebug.IsChecked.GetValueOrDefault());
                 freeLanService.GetFreeLanServiceStatus();
 
                 OnCommonStart();
@@ -287,8 +289,10 @@ namespace P2PLauncher.View
                 freeLanService.SetPassphrase(TextBoxClientPassword.Text);
                 freeLanService.SetHostIp(TextBoxClientHost.Text);
                 freeLanService.SetClientId(TextBoxId.Text);
-                freeLanService.SetRelayMode(CheckBoxClientRelay.IsChecked.Value);
-                freeLanService.SetShowShell(CheckBoxDebug.IsChecked.Value);
+                freeLanService.SetRelayMode(CheckBoxClientRelay.IsChecked.GetValueOrDefault());
+                freeLanService.SetShowShell(CheckBoxDebug.IsChecked.GetValueOrDefault());
+
+                SaveClientDefaultsIfRequested();
 
                 OnCommonStart();
 
@@ -351,21 +355,92 @@ namespace P2PLauncher.View
             freeLanAddressCheck.Start();
         }
 
-        private void OnFreeLanAddressCheck(object sender, EventArgs e)
+        private void OnFreeLanAddressCheck(object? sender, EventArgs e)
         {
             UpdateFreeLANAddress();
 
         }
 
-        private void OnProcessCheck(object sender, EventArgs e)
+        private void OnProcessCheck(object? sender, EventArgs e)
         {
-            if (freeLanService.process.HasExited)
+            if (!freeLanService.IsRunning)
             {
                 processCheck.Stop();
                 OnFreeLanStop();
             }
         }
 
+        private static bool TryGetIPv4(string input, out string ipv4)
+        {
+            ipv4 = string.Empty;
+            if (string.IsNullOrWhiteSpace(input)) return false;
+            input = input.Trim();
+            if (System.Net.IPAddress.TryParse(input, out var addr) && addr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+            {
+                ipv4 = addr.ToString();
+                return true;
+            }
+            return false;
+        }
 
+        private void OnPasteHostIpClick(object sender, RoutedEventArgs e)
+        {
+            if (Clipboard.ContainsText())
+            {
+                string txt = Clipboard.GetText();
+                if (TryGetIPv4(txt, out var ip))
+                {
+                    TextBoxClientHost.Text = ip;
+                }
+                else
+                {
+                    MessageBox.Show("Clipboard does not contain a valid IPv4 address.");
+                }
+            }
+        }
+
+        private void SaveClientDefaultsIfRequested()
+        {
+            if (CheckBoxRememberClient?.IsChecked != true)
+            {
+                return;
+            }
+            var dto = new UserPreferencesService.ClientDefaults
+            {
+                Host = TextBoxClientHost.Text ?? string.Empty,
+                Password = TextBoxClientPassword.Text ?? string.Empty,
+                Id = TextBoxId.Text ?? string.Empty,
+                Relay = CheckBoxClientRelay.IsChecked == true,
+                ShowDebug = CheckBoxDebug.IsChecked == true
+            };
+            userPrefs.SaveClient(dto);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                processCheck.Stop();
+                processCheck.Tick -= OnProcessCheck;
+
+                freeLanAddressCheck.Stop();
+                freeLanAddressCheck.Tick -= OnFreeLanAddressCheck;
+
+                freeLanService.Dispose();
+            }
+
+            _disposed = true;
+        }
     }
 }
