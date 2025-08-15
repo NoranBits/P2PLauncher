@@ -18,7 +18,10 @@ internal partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string status = "Idle";
 
-    public ObservableCollection<string> RecentHosts { get; } = new();
+    [ObservableProperty]
+    private bool debugEnabled;
+
+    public ObservableCollection<string> RecentHosts { get; } = [];
 
     public MainViewModel()
     {

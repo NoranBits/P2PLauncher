@@ -5,6 +5,11 @@
              xmlns:local="clr-namespace:P2PLauncher"
              StartupUri="View/MainLauncherWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/P2PLauncher;component/Styles/Colors.xaml" />
+                <ResourceDictionary Source="/P2PLauncher;component/Styles/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

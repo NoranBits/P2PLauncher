@@ -7,6 +7,7 @@ This document outlines the initial schema for the modernized client application 
   - Host: string
   - Port: int (default 12000)
   - Status: string
+  - DebugEnabled: bool
   - RecentHosts: ObservableCollection<string>
   - Commands:
     - ConnectCommand()
@@ -17,11 +18,16 @@ This document outlines the initial schema for the modernized client application 
   - DataContext: MainViewModel
   - Regions:
     - Connection panel (Host, Port, Connect/Stop)
+    - Toggle DebugEnabled (maps legacy CheckBoxDebug)
     - Recent Hosts list
     - Status panel
+
+## Theming
+- Resource dictionaries: `Themes/Colors.xaml`, `Themes/Styles.xaml` merged in `App.xaml`.
+- Tokens: PrimaryBrush, AccentBrush, spacing keys.
 
 ## Future extensions
 - Diagnostics panel bound to connectivity checks
 - Persisted settings (client defaults, last host)
 - Validation rules and error templates for inputs
-- Theming (Fluent-like) with resource dictionaries
+- Fluent/WinUI-inspired styling (light/dark)

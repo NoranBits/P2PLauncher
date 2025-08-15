@@ -6,7 +6,7 @@
         xmlns:vm="clr-namespace:P2PLauncher.ViewModels"
         mc:Ignorable="d"
         Title="P2P Launcher" Height="420" Width="860"
-        ResizeMode="NoResize" Closing="Window_Closing">
+        ResizeMode="NoResize">
     <Window.DataContext>
         <vm:MainViewModel />
     </Window.DataContext>

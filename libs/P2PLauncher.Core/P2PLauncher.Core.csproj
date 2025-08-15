@@ -10,7 +10,6 @@
     <!-- Shared enums (no Settings/UI deps) -->
     <Compile Include="..\..\P2PLauncher\Model\AddressType.cs" Link="Model\AddressType.cs" />
     <Compile Include="..\..\P2PLauncher\Model\FreeLanMode.cs" Link="Model\FreeLanMode.cs" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
   </ItemGroup>
   <PropertyGroup>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
