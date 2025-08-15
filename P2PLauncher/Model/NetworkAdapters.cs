@@ -3,7 +3,7 @@ using System.Net.NetworkInformation;
 
 namespace P2PLauncher.Model
 {
-    internal class NetworkAdapters
+    internal sealed class NetworkAdapters
     {
         /// <summary>
         /// Adapters containing the specific string should be ignored.

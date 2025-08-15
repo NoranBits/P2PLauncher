@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using P2PLauncher.Services;
 using System.Net.Sockets;
 using System.Net.NetworkInformation;
@@ -5,7 +6,8 @@ using System.Windows;
 
 namespace P2PLauncher.View
 {
-    internal partial class DiagnosticsWindow : Window
+    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated via XAML")]
+    internal sealed partial class DiagnosticsWindow : Window
     {
         private readonly FeedbackService feedback = new();
 

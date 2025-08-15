@@ -1,4 +1,5 @@
-﻿using P2PLauncher.Model;
+﻿using System.Diagnostics.CodeAnalysis;
+using P2PLauncher.Model;
 using System.Windows;
 using System.Windows.Input;
 
@@ -7,7 +8,8 @@ namespace P2PLauncher.View
     /// <summary>
     /// Interaction logic for WindowsServicesWindow.xaml
     /// </summary>
-    internal partial class WindowsServicesWindow : Window, IWindow
+    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated via XAML")]
+    internal sealed partial class WindowsServicesWindow : Window, IWindow
     {
         private readonly WindowsServices windowsServices;
 

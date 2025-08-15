@@ -1,4 +1,5 @@
-﻿using P2PLauncher.Model;
+﻿using System.Diagnostics.CodeAnalysis;
+using P2PLauncher.Model;
 using System.Windows;
 
 namespace P2PLauncher.View
@@ -6,7 +7,8 @@ namespace P2PLauncher.View
     /// <summary>
     /// Interaction logic for NetworkAdaptersWindow.xaml
     /// </summary>
-    internal partial class NetworkAdaptersWindow : Window, IWindow
+    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated via XAML")]
+    internal sealed partial class NetworkAdaptersWindow : Window, IWindow
     {
         private readonly NetworkAdapters networkAdapters;
 

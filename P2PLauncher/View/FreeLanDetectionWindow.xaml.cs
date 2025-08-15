@@ -1,4 +1,5 @@
-﻿using P2PLauncher.Model;
+﻿using System.Diagnostics.CodeAnalysis;
+using P2PLauncher.Model;
 using P2PLauncher.Services;
 using P2PLauncher.Utils;
 using System.Diagnostics;
@@ -9,7 +10,8 @@ namespace P2PLauncher.View
     /// <summary>
     /// Interaction logic for FreeLanDetectionWindow.xaml
     /// </summary>
-    internal partial class FreeLanDetectionWindow : Window, IWindow
+    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated via XAML")]
+    internal sealed partial class FreeLanDetectionWindow : Window, IWindow
     {
         private readonly FreeLanDetectionService freeLanDetectionService;
         private readonly IFileService fileService;
