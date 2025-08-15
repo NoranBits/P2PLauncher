@@ -16,12 +16,19 @@ JsonSerializerOptions s_jsonOptions = new()
 };
 
 AppDomain.CurrentDomain.UnhandledException += (s, e) => Log.Fatal(e.ExceptionObject as Exception, "UnhandledException");
-TaskScheduler.UnobservedTaskException += (s, e) => { if (e?.Exception != null) { Log.Error(e.Exception, "UnobservedTaskException"); } e?.SetObserved(); };
+TaskScheduler.UnobservedTaskException += (s, e) =>
+{
+    if (e?.Exception != null)
+    {
+        Log.Error(e.Exception, "UnobservedTaskException");
+    }
+    e?.SetObserved();
+};
 
-Option<string> passwordOption = new(name: "--password", description: "Passphrase", getDefaultValue: () => string.Empty);
-Option<bool> relayOption = new(name: "--relay", description: "Enable relay mode", getDefaultValue: () => false);
-Option<bool> debugOption = new(name: "--debug", description: "Show freelan console window", getDefaultValue: () => false);
-Option<string> logLevelOption = new(name: "--log-level", description: "Log level (Verbose|Debug|Information|Warning|Error|Fatal)", getDefaultValue: () => "Information");
+var passwordOption = new Option<string>("--password", "Passphrase");
+var relayOption = new Option<bool>("--relay", "Enable relay mode");
+var debugOption = new Option<bool>("--debug", "Show freelan console window");
+var logLevelOption = new Option<string>("--log-level", "Log level (Verbose|Debug|Information|Warning|Error|Fatal)");
 
 Command hostCmd = new("host", "Start FreeLAN in host mode")
             {
@@ -33,12 +40,12 @@ hostCmd.SetHandler((pwd, relay, debug, logLevel) =>
     try
     {
         Log.Information("Starting HOST (relay={Relay}, debug={Debug})", relay, debug);
-        WindowsServices windowsServices = new();
-        WinDialogService dialog = new();
-        WinFileService files = new();
-        FreeLanDetectionService detect = new(files, dialog);
-        FreeLanService freelan = new(windowsServices, detect, dialog);
-        PeerTracker tracker = new();
+        var windowsServices = new WindowsServices();
+        var dialog = new WinDialogService();
+        var files = new WinFileService();
+        var detect = new FreeLanDetectionService(files, dialog);
+        var freelan = new FreeLanService(windowsServices, detect, dialog);
+        var tracker = new PeerTracker();
 
         freelan.OutputReceived += line => { Log.Debug("freelan: {Line}", line); tracker.ProcessLine(line); };
         freelan.ServiceStarted += () => Log.Information("freelan started");
@@ -111,13 +118,13 @@ statusCmd.SetHandler(() =>
     }
 
     // Discover listening ports (best-effort)
-    System.Net.NetworkInformation.IPGlobalProperties ipProps = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+    var ipProps = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
     var tcpListeners = ipProps.GetActiveTcpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
     var udpListeners = ipProps.GetActiveUdpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
 
     // Recent peer events and recent errors
-    var recentEvents = tracker.Recent(50).Select(e => new { e.Time, e.Type, e.PeerIp, e.Reason }).ToArray();
-    var recentErrors = recentEvents.Where(e => string.Equals(e.Type, "error", StringComparison.OrdinalIgnoreCase)).ToArray();
+    var recentEvents = tracker.Recent(50).Select(e => new { e.Time, e.Type, e.PeerIp, e.Reason });
+    var recentErrors = recentEvents.Where(x => string.Equals(x.Type, "error", StringComparison.OrdinalIgnoreCase));
 
     var any = FreeLanService.GetStrangeFreeLansRunning();
 
@@ -125,7 +132,7 @@ statusCmd.SetHandler(() =>
     {
         Running = any,
         Timestamp = DateTime.UtcNow,
-        PeerCount = tracker.PeerCount,
+        tracker.PeerCount,
         OpenTcpPorts = tcpListeners,
         OpenUdpPorts = udpListeners,
         RecentPeerEvents = recentEvents,
@@ -166,28 +173,22 @@ string[] ReadRecentLogLines(string path, int maxLines)
     {
         if (!File.Exists(path))
         {
-            return Array.Empty<string>();
-        }
-        // Read all lines but keep only last maxLines to avoid large memory
-        var all = File.ReadAllLines(path);
-        if (all.Length <= maxLines)
-        {
-            return all;
+            return [];
         }
 
-        var result = new string[maxLines];
-        Array.Copy(all, all.Length - maxLines, result, 0, maxLines);
-        return result;
+        // Use streaming + LINQ to keep last maxLines without manual array copying
+        var lines = File.ReadLines(path).Reverse().Take(maxLines).Reverse().ToArray();
+        return lines;
     }
     catch (IOException ex)
     {
         Log.Warning(ex, "Unable to read log file: {Path}", path);
-        return new[] { "<unable to read log file>" };
+        return ["<unable to read log file>"];
     }
     catch (UnauthorizedAccessException ex)
     {
         Log.Warning(ex, "Access denied reading log file: {Path}", path);
-        return new[] { "<access denied reading log file>" };
+        return ["<access denied reading log file>"];
     }
     catch (Exception ex)
     {

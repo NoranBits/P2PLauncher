@@ -3,7 +3,6 @@ using P2PLauncher.Model;
 using P2PLauncher.Utils;
 using System.Diagnostics;
 using System.IO;
-using System.ServiceProcess;
 
 namespace P2PLauncher.Services
 {
@@ -95,7 +94,7 @@ namespace P2PLauncher.Services
         public bool GetFreeLanServiceStatus()
         {
             WindowsService? freeLanService = windowsServices.GetServiceByName("FreeLAN Service");
-            return freeLanService != null && freeLanService.Status == ServiceControllerStatus.Running;
+            return freeLanService != null && freeLanService.Status == System.ServiceProcess.ServiceControllerStatus.Running;
         }
 
         public void SetFreeLanServiceStatus(bool start)

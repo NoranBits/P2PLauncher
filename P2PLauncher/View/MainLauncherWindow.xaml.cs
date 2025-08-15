@@ -252,6 +252,15 @@ namespace P2PLauncher.View
                 {
                     SetStateValueLabel("Host - running.");
                     StartProcessCheck();
+                    // record successful host start (host uses well-known 9.0.0.1 and port 12000)
+                    try
+                    {
+                        userPrefs.SaveSuccessfulConnection("9.0.0.1", 12000);
+                    }
+                    catch
+                    {
+                        // non-fatal: ignore persistence failures
+                    }
                 }
             }
             catch (Exception ex)
@@ -286,6 +295,16 @@ namespace P2PLauncher.View
                 {
                     SetStateValueLabel("Client - running.");
                     StartProcessCheck();
+                    // record successful client connection
+                    try
+                    {
+                        var host = TextBoxClientHost.Text ?? string.Empty;
+                        userPrefs.SaveSuccessfulConnection(host, 12000);
+                    }
+                    catch
+                    {
+                        // non-fatal: ignore persistence failures
+                    }
                 }
             }
             catch (Exception ex)

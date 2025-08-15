@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
-using System.IO;
 using System.Linq.Expressions;
-using System.Net.Http;
 using System.Security.Principal;
+using System.Net.Http;
+using System.IO;
 
 namespace P2PLauncher.Utils
 {
@@ -62,7 +62,7 @@ namespace P2PLauncher.Utils
         {
             try
             {
-                using HttpClient http = new() { Timeout = TimeSpan.FromSeconds(5) };
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
                 var ip = http.GetStringAsync(new Uri("https://api.ipify.org")).GetAwaiter().GetResult();
                 return ip.Trim();
             }

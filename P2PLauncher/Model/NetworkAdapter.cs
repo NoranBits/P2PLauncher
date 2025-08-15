@@ -49,7 +49,7 @@ namespace P2PLauncher.Model
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden
             };
-            using Process? p = Process.Start(psi);
+            using var p = Process.Start(psi);
         }
 
         public void Disable()
@@ -59,7 +59,7 @@ namespace P2PLauncher.Model
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden
             };
-            using Process? p = Process.Start(psi);
+            using var p = Process.Start(psi);
         }
     }
 }
