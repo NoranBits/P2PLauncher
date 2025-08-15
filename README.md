@@ -1,6 +1,11 @@
 # P2PLauncher (modernized for .NET 9)
 
-P2PLauncher connects peers into a virtual LAN using FreeLAN with a WPF client and a headless server CLI.
+P2PLauncher connects peers into a virtual LAN using FreeLAN with a WPF client (MVVM) and a headless server CLI.
+
+## Tech stack
+- .NET 9
+- WPF client using MVVM (CommunityToolkit.Mvvm)
+- Server CLI with System.CommandLine and Serilog
 
 ## Quick start
 
@@ -52,4 +57,19 @@ All original code remains under GPL-3.0. See `LICENSE`.
 
 ## Versioning
 - Fork version: 0.5.0 (breaking changes from upstream due to runtime upgrade and layout changes)
+
+## Client schema
+- ViewModels in `P2PLauncher/ViewModels/` expose bindable state and [RelayCommand] commands.
+- Views in `P2PLauncher/View/*.xaml` bind to view-models via Window.DataContext.
+- Persist successful connections and recent servers (planned integration with existing services).
+
+## Server status schema (JSON)
+- Running: bool
+- Timestamp: UTC
+- PeerCount: number
+- CurrentPeers: [{ Ip, Id, Name, Since }]
+- RecentPeerEvents: { Time, Type, PeerIp, PeerId, PeerName, Reason }
+- OpenTcpPorts/OpenUdpPorts: number[]
+- RecentSavedHosts: string[]
+- RecentLogLines: string[]
 

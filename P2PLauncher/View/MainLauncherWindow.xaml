@@ -3,135 +3,45 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:P2PLauncher.ViewModels"
         mc:Ignorable="d"
         Title="P2P Launcher" Height="420" Width="860"
         ResizeMode="NoResize" Closing="Window_Closing">
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
     <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="420"/>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Left: Actions -->
-        <TabControl Grid.Column="0">
-            <TabItem Header="Host">
-                <Grid Background="#FAFAFA" Margin="6">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+        <!-- Connection panel -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBox Width="180" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBox Width="80" Text="{Binding Port}" Margin="8,0,0,0" />
+            <Button Content="Connect" Command="{Binding ConnectCommand}" Margin="8,0,0,0" />
+            <Button Content="Stop" Command="{Binding StopCommand}" Margin="8,0,0,0" />
+        </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <Label Content="Password:" VerticalAlignment="Center"/>
-                        <TextBox x:Name="TextBoxHostPassword" Width="180" Margin="6,0"/>
-                        <CheckBox x:Name="CheckBoxHostRelay" Content="Relay mode" IsChecked="True"/>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
-                        <Button Content="Start Host" Click="OnHostStartClick" Width="110"/>
-                        <Button Content="Stop" Click="OnFreeLanStopClick" Margin="8,0,0,0" Width="80"/>
-                        <CheckBox x:Name="CheckBoxDebug" Content="Debug screen" Margin="16,0,0,0"/>
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="2" TextWrapping="Wrap" Foreground="#666">
-                        Your IP as host will be: 9.0.0.1
-                        &#x0a;If clients cannot connect, forward UDP port 12000.
-                    </TextBlock>
-                </Grid>
-            </TabItem>
-            <TabItem Header="Client">
-                <Grid Background="#FAFAFA" Margin="6">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <Label Content="Host IPv4:" VerticalAlignment="Center"/>
-                        <TextBox x:Name="TextBoxClientHost" Width="160" Margin="6,0"/>
-                        <Button Content="Paste" Click="OnPasteHostIpClick" Width="60"/>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8">
-                        <Label Content="Id:" VerticalAlignment="Center"/>
-                        <TextBox x:Name="TextBoxId" Width="80" Margin="6,0"/>
-                        <Label Content="Password:" VerticalAlignment="Center" Margin="16,0,0,0"/>
-                        <TextBox x:Name="TextBoxClientPassword" Width="140" Margin="6,0"/>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,8">
-                        <CheckBox x:Name="CheckBoxClientRelay" Content="Relay mode"/>
-                        <CheckBox x:Name="CheckBoxRememberClient" Content="Save for next time" Margin="16,0,0,0"/>
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="3" TextWrapping="Wrap" Foreground="#666">
-                        One click &amp; go: Fill host IPv4, your Id and password, then press Start.
-                    </TextBlock>
-
-                    <StackPanel Orientation="Horizontal" Grid.Row="4">
-                        <Button Content="Start Client" Click="OnClientStartClick" Width="110"/>
-                        <Button Content="Stop" Click="OnFreeLanStopClick" Margin="8,0,0,0" Width="80"/>
-                    </StackPanel>
-                </Grid>
-            </TabItem>
-        </TabControl>
-
-        <!-- Right: Information -->
-        <GroupBox Grid.Column="1" Header="Information" Margin="12,0,0,0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <StackPanel Orientation="Horizontal">
-                    <Label Content="FreeLAN status:"/>
-                    <Label x:Name="LabelFreeLanStatusValue" Content="Status"/>
-                    <Button Click="OnOpenFreeLanSettingsButton" Content="Configure" Margin="8,0,0,0" Width="85"/>
-                </StackPanel>
-
-                <StackPanel Grid.Row="1" Orientation="Horizontal">
-                    <Label Content="Adapters to disable:"/>
-                    <Label x:Name="LabelAdaptersToDisableValue" Content="0"/>
-                    <Button Click="OnOpenAdaptersSettingsButton" Content="Configure" Margin="8,0,0,0" Width="85"/>
-                </StackPanel>
-
-                <StackPanel Grid.Row="2" Orientation="Horizontal">
-                    <Label Content="Services to disable:"/>
-                    <Label x:Name="LabelServicesToDisableValue" Content="0"/>
-                    <Button Click="OnOpenServicesSettingsButton" Content="Configure" Margin="8,0,0,0" Width="85"/>
-                </StackPanel>
-
-                <StackPanel Grid.Row="3" Orientation="Horizontal">
-                    <Label Content="Public address:"/>
-                    <Label x:Name="LabelPublicAddress" Content="0.0.0.0" Width="160"/>
-                    <Button x:Name="ButtonCopyPublicAddress" Click="OnCopyPublicAddressClick" Content="Copy" Width="60"/>
-                </StackPanel>
-
-                <StackPanel Grid.Row="4">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="Your FreeLAN IP:"/>
-                        <Label x:Name="LabelFreeLANAddress" Content="None" Width="200"/>
-                    </StackPanel>
-                    <Label Visibility="Hidden" x:Name="LabelFreeLANAddressTip" Content="More than 1 TAP adapter found, showing possible IPs." FontSize="10" FontStyle="Italic"/>
-                </StackPanel>
-
-                <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="ButtonOpenLogs" Click="OnOpenLogsClick" Content="Open logs" Width="85"/>
-                    <Button Content="Diagnostics" Click="OnOpenDiagnostics" Margin="8,0,0,0" Width="85"/>
-                    <Label Content="State:" Margin="12,0,0,0"/>
-                    <Label x:Name="LabelStateValue" Content="Not running"/>
-                </StackPanel>
-            </Grid>
+        <!-- Recent hosts -->
+        <GroupBox Grid.Row="1" Grid.Column="0" Header="Recent Hosts" Margin="0,0,8,8">
+            <ListBox ItemsSource="{Binding RecentHosts}" />
         </GroupBox>
+
+        <!-- Status / logs placeholder -->
+        <GroupBox Grid.Row="1" Grid.Column="1" Header="Status" Margin="8,0,0,8">
+            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+        </GroupBox>
+
+        <!-- Footer -->
+        <StatusBar Grid.Row="2" Grid.ColumnSpan="2">
+            <StatusBarItem Content="P2PLauncher .NET 9" />
+        </StatusBar>
     </Grid>
 </Window>

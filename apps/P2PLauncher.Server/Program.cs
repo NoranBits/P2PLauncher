@@ -46,10 +46,31 @@ hostCmd.SetHandler((pwd, relay, debug, logLevel) =>
         var detect = new FreeLanDetectionService(files, dialog);
         var freelan = new FreeLanService(windowsServices, detect, dialog);
         var tracker = new PeerTracker();
+        var prefs = new ServerPreferencesService();
 
         freelan.OutputReceived += line => { Log.Debug("freelan: {Line}", line); tracker.ProcessLine(line); };
         freelan.ServiceStarted += () => Log.Information("freelan started");
-        freelan.ServiceStopped += () => Log.Information("freelan stopped");
+        freelan.ServiceStopped += () =>
+        {
+            Log.Information("freelan stopped");
+            // clear cached identities when freelan stops (server restart/shutdown)
+            try
+            {
+                PeerTracker.ClearAllIds();
+            }
+            catch (IOException ex)
+            {
+                Log.Warning(ex, "Unable to clear peer identities (IO)");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Log.Warning(ex, "Unable to clear peer identities (ACL)");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Unable to clear peer identities");
+            }
+        };
 
         if (string.IsNullOrWhiteSpace(pwd))
         {
@@ -69,6 +90,24 @@ hostCmd.SetHandler((pwd, relay, debug, logLevel) =>
             return;
         }
 
+        // Persist successful host start so operators can see known hosts in server status
+        try
+        {
+            prefs.SaveSuccessfulConnection("9.0.0.1", 12000);
+        }
+        catch (IOException ex)
+        {
+            Log.Warning(ex, "Unable to persist server successful connection (IO)");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Warning(ex, "Unable to persist server successful connection (ACL)");
+        }
+        catch (JsonException ex)
+        {
+            Log.Warning(ex, "Unable to persist server successful connection (JSON)");
+        }
+
         Log.Information("Peer count: {Count}", tracker.PeerCount);
         Console.WriteLine("Press Ctrl+C to stop...");
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; freelan.StopFreeLan(); };
@@ -82,9 +121,19 @@ hostCmd.SetHandler((pwd, relay, debug, logLevel) =>
     {
         // graceful shutdown
     }
-    catch (Exception ex)
+    catch (IOException ex)
     {
-        Log.Error(ex, "Unhandled error in host command");
+        Log.Error(ex, "IO error in host command");
+        throw;
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        Log.Error(ex, "Access error in host command");
+        throw;
+    }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "JSON error in host command");
         throw;
     }
     finally
@@ -99,6 +148,51 @@ stopCmd.SetHandler(() =>
     ConfigureLogging("Information");
     var killed = FreeLanService.KillStrangeFreeLan();
     Log.Information(killed ? "Stopped freelan" : "No freelan process found");
+
+    // Also clear the cached identities since server is stopping
+    try
+    {
+        PeerTracker.ClearAllIds();
+    }
+    catch (IOException ex)
+    {
+        Log.Warning(ex, "Unable to clear peer identities on stop command (IO)");
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        Log.Warning(ex, "Unable to clear peer identities on stop command (ACL)");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Unable to clear peer identities on stop command");
+    }
+
+    Log.CloseAndFlush();
+});
+
+Command clearIdsCmd = new("clear-ids", "Clear cached peer identities")
+{
+};
+clearIdsCmd.SetHandler(() =>
+{
+    ConfigureLogging("Information");
+    try
+    {
+        PeerTracker.ClearAllIds();
+        Log.Information("Cleared peer identities");
+    }
+    catch (IOException ex)
+    {
+        Log.Warning(ex, "Unable to clear peer identities (IO)");
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        Log.Warning(ex, "Unable to clear peer identities (ACL)");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Unable to clear peer identities");
+    }
     Log.CloseAndFlush();
 });
 
@@ -107,58 +201,87 @@ statusCmd.SetHandler(() =>
 {
     ConfigureLogging("Information");
 
-    // Read recent raw log lines first
-    var recentLines = ReadRecentLogLines("logs/server.log", 1000);
-
-    // Analyze peer-related events by replaying log lines through PeerTracker
-    var tracker = new PeerTracker();
-    foreach (var line in recentLines)
+    try
     {
-        tracker.ProcessLine(line);
+        // Read recent raw log lines first
+        var recentLines = ReadRecentLogLines("logs/server.log", 1000);
+
+        // Analyze peer-related events by replaying log lines through PeerTracker
+        var tracker = new PeerTracker();
+        foreach (var line in recentLines)
+        {
+            tracker.ProcessLine(line);
+        }
+
+        // Discover listening ports (best-effort)
+        var ipProps = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+        var tcpListeners = ipProps.GetActiveTcpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
+        var udpListeners = ipProps.GetActiveUdpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
+
+        // Recent peer events and recent errors
+        var recentEvents = tracker.Recent(50).Select(e => new { e.Time, e.Type, e.PeerIp, e.PeerId, e.PeerName, e.Reason });
+        var recentErrors = recentEvents.Where(x => string.Equals(x.Type, "error", StringComparison.OrdinalIgnoreCase));
+
+        var any = FreeLanService.GetStrangeFreeLansRunning();
+
+        // Include recent saved hosts from server preferences
+        var prefs = new ServerPreferencesService();
+        IReadOnlyList<string> recentSavedHosts = prefs.GetRecentHosts(50);
+
+        // Add current peers with identity
+        IReadOnlyList<PeerInfo> currentPeers = tracker.GetCurrentPeers();
+
+        var result = new
+        {
+            Running = any,
+            Timestamp = DateTime.UtcNow,
+            PeerCount = tracker.PeerCount,
+            OpenTcpPorts = tcpListeners,
+            OpenUdpPorts = udpListeners,
+            CurrentPeers = currentPeers,
+            RecentPeerEvents = recentEvents,
+            RecentErrors = recentErrors,
+            RecentLogLines = recentLines,
+            RecentSavedHosts = recentSavedHosts
+        };
+
+        var json = JsonSerializer.Serialize(result, s_jsonOptions);
+        Console.WriteLine(json);
+
+        Log.Information(any ? "Running" : "Stopped");
     }
-
-    // Discover listening ports (best-effort)
-    var ipProps = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
-    var tcpListeners = ipProps.GetActiveTcpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
-    var udpListeners = ipProps.GetActiveUdpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
-
-    // Recent peer events and recent errors
-    var recentEvents = tracker.Recent(50).Select(e => new { e.Time, e.Type, e.PeerIp, e.Reason });
-    var recentErrors = recentEvents.Where(x => string.Equals(x.Type, "error", StringComparison.OrdinalIgnoreCase));
-
-    var any = FreeLanService.GetStrangeFreeLansRunning();
-
-    var result = new
+    catch (IOException ex)
     {
-        Running = any,
-        Timestamp = DateTime.UtcNow,
-        tracker.PeerCount,
-        OpenTcpPorts = tcpListeners,
-        OpenUdpPorts = udpListeners,
-        RecentPeerEvents = recentEvents,
-        RecentErrors = recentErrors,
-        RecentLogLines = recentLines
-    };
-
-    JsonSerializerOptions options = s_jsonOptions;
-
-    var json = JsonSerializer.Serialize(result, options);
-    Console.WriteLine(json);
-
-    Log.Information(any ? "Running" : "Stopped");
-    Log.CloseAndFlush();
+        Log.Error(ex, "IO error in status command");
+        throw;
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        Log.Error(ex, "Access error in status command");
+        throw;
+    }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "JSON error in status command");
+        throw;
+    }
+    finally
+    {
+        Log.CloseAndFlush();
+    }
 });
 
 RootCommand root = new("P2PLauncher Server CLI");
 root.AddCommand(hostCmd);
 root.AddCommand(stopCmd);
 root.AddCommand(statusCmd);
+root.AddCommand(clearIdsCmd);
 
 return await root.InvokeAsync(args).ConfigureAwait(false);
 
 void ConfigureLogging(string level)
 {
-    LogEventLevel logEvent = Enum.TryParse(level, true, out LogEventLevel lvl) ? lvl : LogEventLevel.Information;
+    var logEvent = Enum.TryParse(level, true, out LogEventLevel lvl) ? lvl : LogEventLevel.Information;
     Log.Logger = new LoggerConfiguration()
         .MinimumLevel.Is(logEvent)
         .Enrich.FromLogContext()
@@ -189,10 +312,5 @@ string[] ReadRecentLogLines(string path, int maxLines)
     {
         Log.Warning(ex, "Access denied reading log file: {Path}", path);
         return ["<access denied reading log file>"];
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unexpected exception while reading log file: {Path}", path);
-        throw;
     }
 }
