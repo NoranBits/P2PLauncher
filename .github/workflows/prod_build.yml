@@ -1,0 +1,107 @@
+# Basic workflow to help you get started with Actions
+
+name: Release Build
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    tags:
+      - '*.prod'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\NuGet\v3-cache
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Get version
+        id: vars
+        shell: pwsh
+        run: |
+          $v = $env:GITHUB_REF -replace '^refs/tags/',''
+          echo "VERSION=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore ./P2PLauncher.sln
+
+      - name: Build (Release)
+        run: dotnet build ./P2PLauncher.sln -c Release --no-restore
+
+      - name: Publish all targets (client + server)
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Target all -Configuration Release
+
+      - name: Publish server self-contained win-x64
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Target server -Configuration Release -SelfContained -Runtime win-x64
+
+      - name: Package server zip
+        shell: pwsh
+        run: |
+          $serverOut = Join-Path $PWD 'artifacts/server'
+          $serverZip = Join-Path $serverOut 'P2PLauncher-server-Release-win-x64.zip'
+          if (Test-Path $serverZip) { Remove-Item -Force $serverZip }
+          Compress-Archive -Path (Join-Path $serverOut '*') -DestinationPath $serverZip -Force
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2p-launcher-${{ steps.vars.outputs.VERSION }}
+          path: |
+            artifacts/client/P2PLauncher-standalone-Release.zip
+            artifacts/server/P2PLauncher-server-Release-win-x64.zip
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.vars.outputs.VERSION }}
+          body_path: changelog.md
+          draft: true
+          prerelease: false
+
+      - name: Upload Client Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/client/P2PLauncher-standalone-Release.zip
+          asset_name: p2p-launcher-client-${{ steps.vars.outputs.VERSION }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Server Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/server/P2PLauncher-server-Release-win-x64.zip
+          asset_name: p2p-launcher-server-win-x64-${{ steps.vars.outputs.VERSION }}.zip
+          asset_content_type: application/zip

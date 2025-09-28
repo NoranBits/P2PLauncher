@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <OutputType>WinExe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>P2PLauncher</AssemblyName>
+    <RootNamespace>P2PLauncher</RootNamespace>
+    <ApplicationIcon>community-symbol.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.8" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="System.Management" Version="9.0.8" />
+  </ItemGroup>
+
+  <PropertyGroup>
+  </PropertyGroup>
+</Project>

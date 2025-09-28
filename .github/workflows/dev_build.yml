@@ -1,0 +1,105 @@
+# Basic workflow to help you get started with Actions
+
+name: CI Dev
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    tags:
+      - '*.debug'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\NuGet\v3-cache
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Get version
+        id: vars
+        shell: pwsh
+        run: |
+          $v = $env:GITHUB_REF -replace '^refs/tags/',''
+          echo "VERSION=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore ./P2PLauncher.sln
+
+      - name: Build (Debug)
+        run: dotnet build ./P2PLauncher.sln -c Debug --no-restore
+
+      - name: Publish dev/debug artifacts
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Target all -Configuration Debug
+
+      - name: Upload artifacts (Dev)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2p-launcher-dev-${{ steps.vars.outputs.VERSION }}
+          path: |
+            artifacts/client/P2PLauncher-client-Dev.zip
+            artifacts/client/P2PLauncher-standalone-Dev.zip
+            artifacts/server/P2PLauncher-server-Dev.zip
+
+      - name: Create Release (draft)
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Dev ${{ steps.vars.outputs.VERSION }}
+          body_path: changelog.md
+          draft: true
+          prerelease: true
+
+      - name: Upload Dev Asset - Client
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/client/P2PLauncher-client-Dev.zip
+          asset_name: p2p-launcher-client-Dev-${{ steps.vars.outputs.VERSION }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Dev Asset - Standalone Client
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/client/P2PLauncher-standalone-Dev.zip
+          asset_name: p2p-launcher-standalone-Dev-${{ steps.vars.outputs.VERSION }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Dev Asset - Server
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/server/P2PLauncher-server-Dev.zip
+          asset_name: p2p-launcher-server-Dev-${{ steps.vars.outputs.VERSION }}.zip
+          asset_content_type: application/zip

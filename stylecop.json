@@ -1,0 +1,47 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "companyName": "K4CZP3R, Ndo360",
+      "copyrightText": "Copyright © {companyName} {year}. All rights reserved.",
+      "documentExposedElements": false,
+      "documentInternalElements": false,
+      "documentPrivateElements": false,
+      "documentPrivateFields": false,
+      "documentInterfaces": true,
+      "documentationCulture": "en-US"
+    },
+    "layoutRules": {
+      "newlineAtEndOfFile": "require",
+      "allowConsecutiveUsings": true
+    },
+    "namingRules": {
+      "allowCommonHungarianPrefixes": false,
+      "allowedHungarianPrefixes": [],
+      "includeInferredTupleElementNames": false,
+      "tupleElementNameCasing": "camelCase"
+    },
+    "orderingRules": {
+      "usingDirectivesPlacement": "insideNamespace",
+      "systemUsingDirectivesFirst": true,
+      "blankLinesBetweenUsingGroups": "omit"
+    },
+    "readabilityRules": {
+      "allowBuiltInTypeAliases": true
+    },
+    "maintainabilityRules": {
+      "topLevelTypes": [
+        "class",
+        "interface",
+        "struct",
+        "delegate",
+        "enum"
+      ]
+    },
+    "indentation": {
+      "indentationSize": 4,
+      "tabSize": 4,
+      "useTabs": false
+    }
+  }
+}
