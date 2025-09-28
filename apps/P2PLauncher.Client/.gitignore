@@ -1,0 +1,17 @@
+# Build outputs
+bin/
+obj/
+logs/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# Debug files
+*.pdb
+
+# Package outputs
+*.nupkg
+*.snupkg
