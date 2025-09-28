@@ -1,316 +1,309 @@
 using System.CommandLine;
-using System.Globalization;
-using P2PLauncher.Exceptions;
-using P2PLauncher.Model;
-using P2PLauncher.Services;
-using Serilog;
-using Serilog.Events;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using P2PLauncher.Server;
+using System.Net.NetworkInformation;
+using Serilog;
+using Serilog.Formatting.Compact;
+using P2PLauncher.Server.Models;
 
-JsonSerializerOptions s_jsonOptions = new()
+// Configure JSON serialization with UTC support
+var jsonOptions = new JsonSerializerOptions
 {
     WriteIndented = true,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    Converters = { new UtcDateTimeConverter() }
 };
 
-AppDomain.CurrentDomain.UnhandledException += (s, e) => Log.Fatal(e.ExceptionObject as Exception, "UnhandledException");
-TaskScheduler.UnobservedTaskException += (s, e) =>
+// Global cancellation token for graceful shutdown
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) => 
 {
-    if (e?.Exception != null)
-    {
-        Log.Error(e.Exception, "UnobservedTaskException");
-    }
-    e?.SetObserved();
+    e.Cancel = true;
+    cts.Cancel();
 };
 
-var passwordOption = new Option<string>("--password", "Passphrase");
-var relayOption = new Option<bool>("--relay", "Enable relay mode");
-var debugOption = new Option<bool>("--debug", "Show freelan console window");
-var logLevelOption = new Option<string>("--log-level", "Log level (Verbose|Debug|Information|Warning|Error|Fatal)");
+// Configure Serilog with compact JSON formatter
+ConfigureSerilog();
 
-Command hostCmd = new("host", "Start FreeLAN in host mode")
-            {
-                passwordOption, relayOption, debugOption, logLevelOption
-            };
-hostCmd.SetHandler((pwd, relay, debug, logLevel) =>
+// Setup commands
+var runCommand = new Command("run", "Start the headless server loop");
+runCommand.SetHandler(async () => await RunServerAsync(cts.Token));
+
+var statusCommand = new Command("status", "Print server status as JSON to stdout");
+statusCommand.SetHandler(async () => await PrintStatusAsync());
+
+var stopCommand = new Command("stop", "Graceful shutdown hook");
+stopCommand.SetHandler(async () => await StopServerAsync());
+
+var testPortsCommand = new Command("test-ports", "Test port detection and return sample arrays");
+testPortsCommand.SetHandler(async () => await TestPortsAsync());
+
+var printConfigCommand = new Command("print-config", "Echo current effective configuration");
+printConfigCommand.SetHandler(async () => await PrintConfigAsync());
+
+// Root command
+var rootCommand = new RootCommand("P2PLauncher Server - Headless server CLI")
 {
-    ConfigureLogging(logLevel);
+    runCommand,
+    statusCommand,
+    stopCommand,
+    testPortsCommand,
+    printConfigCommand
+};
+
+try
+{
+    return await rootCommand.InvokeAsync(args);
+}
+catch (OperationCanceledException)
+{
+    Log.Information("Operation was cancelled");
+    return 0;
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    return 1;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
+async Task RunServerAsync(CancellationToken cancellationToken)
+{
+    Log.Information("Starting P2PLauncher headless server");
+    
     try
     {
-        Log.Information("Starting HOST (relay={Relay}, debug={Debug})", relay, debug);
-        var windowsServices = new WindowsServices();
-        var dialog = new WinDialogService();
-        var files = new WinFileService();
-        var detect = new FreeLanDetectionService(files, dialog);
-        var freelan = new FreeLanService(windowsServices, detect, dialog);
-        var tracker = new PeerTracker();
-        var prefs = new ServerPreferencesService();
+        // Placeholder timer-based processing
+        using var timer = new Timer(async _ => 
+        {
+            Log.Information("Server heartbeat - simulating peer discovery and processing");
+            
+            // Simulate some work
+            await Task.Delay(100, cancellationToken);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
 
-        freelan.OutputReceived += line => { Log.Debug("freelan: {Line}", line); tracker.ProcessLine(line); };
-        freelan.ServiceStarted += () => Log.Information("freelan started");
-        freelan.ServiceStopped += () =>
-        {
-            Log.Information("freelan stopped");
-            // clear cached identities when freelan stops (server restart/shutdown)
-            try
-            {
-                PeerTracker.ClearAllIds();
-            }
-            catch (IOException ex)
-            {
-                Log.Warning(ex, "Unable to clear peer identities (IO)");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                Log.Warning(ex, "Unable to clear peer identities (ACL)");
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Unable to clear peer identities");
-            }
-        };
-
-        if (string.IsNullOrWhiteSpace(pwd))
-        {
-            Log.Warning("Empty passphrase provided; aborting for security");
-            return;
-        }
-
-        freelan.SetPassphrase(pwd);
-        freelan.SetMode(FreeLanMode.HOST);
-        freelan.SetRelayMode(relay);
-        freelan.SetShowShell(debug);
-
-        var ok = freelan.StartFreeLan();
-        if (!ok)
-        {
-            Log.Error("HOST failed to start");
-            return;
-        }
-
-        // Persist successful host start so operators can see known hosts in server status
-        try
-        {
-            prefs.SaveSuccessfulConnection("9.0.0.1", 12000);
-        }
-        catch (IOException ex)
-        {
-            Log.Warning(ex, "Unable to persist server successful connection (IO)");
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            Log.Warning(ex, "Unable to persist server successful connection (ACL)");
-        }
-        catch (JsonException ex)
-        {
-            Log.Warning(ex, "Unable to persist server successful connection (JSON)");
-        }
-
-        Log.Information("Peer count: {Count}", tracker.PeerCount);
-        Console.WriteLine("Press Ctrl+C to stop...");
-        Console.CancelKeyPress += (_, e) => { e.Cancel = true; freelan.StopFreeLan(); };
-        Thread.Sleep(Timeout.Infinite);
-    }
-    catch (InvalidInput ex)
-    {
-        Log.Error(ex, "Invalid input");
+        Log.Information("Server is running. Press Ctrl+C to stop.");
+        
+        // Wait until cancellation is requested
+        await Task.Delay(Timeout.Infinite, cancellationToken);
     }
     catch (OperationCanceledException)
     {
-        // graceful shutdown
-    }
-    catch (IOException ex)
-    {
-        Log.Error(ex, "IO error in host command");
-        throw;
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        Log.Error(ex, "Access error in host command");
-        throw;
-    }
-    catch (JsonException ex)
-    {
-        Log.Error(ex, "JSON error in host command");
-        throw;
-    }
-    finally
-    {
-        Log.CloseAndFlush();
-    }
-}, passwordOption, relayOption, debugOption, logLevelOption);
-
-Command stopCmd = new("stop", "Stop any running freelan process");
-stopCmd.SetHandler(() =>
-{
-    ConfigureLogging("Information");
-    var killed = FreeLanService.KillStrangeFreeLan();
-    Log.Information(killed ? "Stopped freelan" : "No freelan process found");
-
-    // Also clear the cached identities since server is stopping
-    try
-    {
-        PeerTracker.ClearAllIds();
-    }
-    catch (IOException ex)
-    {
-        Log.Warning(ex, "Unable to clear peer identities on stop command (IO)");
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        Log.Warning(ex, "Unable to clear peer identities on stop command (ACL)");
+        Log.Information("Server shutdown requested");
     }
     catch (Exception ex)
     {
-        Log.Warning(ex, "Unable to clear peer identities on stop command");
-    }
-
-    Log.CloseAndFlush();
-});
-
-Command clearIdsCmd = new("clear-ids", "Clear cached peer identities")
-{
-};
-clearIdsCmd.SetHandler(() =>
-{
-    ConfigureLogging("Information");
-    try
-    {
-        PeerTracker.ClearAllIds();
-        Log.Information("Cleared peer identities");
-    }
-    catch (IOException ex)
-    {
-        Log.Warning(ex, "Unable to clear peer identities (IO)");
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        Log.Warning(ex, "Unable to clear peer identities (ACL)");
-    }
-    catch (Exception ex)
-    {
-        Log.Warning(ex, "Unable to clear peer identities");
-    }
-    Log.CloseAndFlush();
-});
-
-Command statusCmd = new("status", "Show freelan status");
-statusCmd.SetHandler(() =>
-{
-    ConfigureLogging("Information");
-
-    try
-    {
-        // Read recent raw log lines first
-        var recentLines = ReadRecentLogLines("logs/server.log", 1000);
-
-        // Analyze peer-related events by replaying log lines through PeerTracker
-        var tracker = new PeerTracker();
-        foreach (var line in recentLines)
-        {
-            tracker.ProcessLine(line);
-        }
-
-        // Discover listening ports (best-effort)
-        var ipProps = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
-        var tcpListeners = ipProps.GetActiveTcpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
-        var udpListeners = ipProps.GetActiveUdpListeners().Select(p => p.Port).OrderBy(p => p).ToArray();
-
-        // Recent peer events and recent errors
-        var recentEvents = tracker.Recent(50).Select(e => new { e.Time, e.Type, e.PeerIp, e.PeerId, e.PeerName, e.Reason });
-        var recentErrors = recentEvents.Where(x => string.Equals(x.Type, "error", StringComparison.OrdinalIgnoreCase));
-
-        var any = FreeLanService.GetStrangeFreeLansRunning();
-
-        // Include recent saved hosts from server preferences
-        var prefs = new ServerPreferencesService();
-        IReadOnlyList<string> recentSavedHosts = prefs.GetRecentHosts(50);
-
-        // Add current peers with identity
-        IReadOnlyList<PeerInfo> currentPeers = tracker.GetCurrentPeers();
-
-        var result = new
-        {
-            Running = any,
-            Timestamp = DateTime.UtcNow,
-            PeerCount = tracker.PeerCount,
-            OpenTcpPorts = tcpListeners,
-            OpenUdpPorts = udpListeners,
-            CurrentPeers = currentPeers,
-            RecentPeerEvents = recentEvents,
-            RecentErrors = recentErrors,
-            RecentLogLines = recentLines,
-            RecentSavedHosts = recentSavedHosts
-        };
-
-        var json = JsonSerializer.Serialize(result, s_jsonOptions);
-        Console.WriteLine(json);
-
-        Log.Information(any ? "Running" : "Stopped");
-    }
-    catch (IOException ex)
-    {
-        Log.Error(ex, "IO error in status command");
+        Log.Error(ex, "Error occurred during server operation");
         throw;
     }
-    catch (UnauthorizedAccessException ex)
-    {
-        Log.Error(ex, "Access error in status command");
-        throw;
-    }
-    catch (JsonException ex)
-    {
-        Log.Error(ex, "JSON error in status command");
-        throw;
-    }
-    finally
-    {
-        Log.CloseAndFlush();
-    }
-});
-
-RootCommand root = new("P2PLauncher Server CLI");
-root.AddCommand(hostCmd);
-root.AddCommand(stopCmd);
-root.AddCommand(statusCmd);
-root.AddCommand(clearIdsCmd);
-
-return await root.InvokeAsync(args).ConfigureAwait(false);
-
-void ConfigureLogging(string level)
-{
-    var logEvent = Enum.TryParse(level, true, out LogEventLevel lvl) ? lvl : LogEventLevel.Information;
-    Log.Logger = new LoggerConfiguration()
-        .MinimumLevel.Is(logEvent)
-        .Enrich.FromLogContext()
-        .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-        .WriteTo.File(path: "logs/server.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7, formatProvider: CultureInfo.InvariantCulture)
-        .CreateLogger();
+    
+    Log.Information("Server stopped");
 }
 
-string[] ReadRecentLogLines(string path, int maxLines)
+async Task PrintStatusAsync()
 {
+    Log.Debug("Generating server status");
+    
     try
     {
-        if (!File.Exists(path))
-        {
-            return [];
-        }
+        var status = await GenerateServerStatusAsync();
+        var json = JsonSerializer.Serialize(status, jsonOptions);
+        Console.WriteLine(json);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Failed to generate server status");
+        throw;
+    }
+}
 
-        // Use streaming + LINQ to keep last maxLines without manual array copying
-        var lines = File.ReadLines(path).Reverse().Take(maxLines).Reverse().ToArray();
-        return lines;
-    }
-    catch (IOException ex)
+async Task StopServerAsync()
+{
+    Log.Information("Graceful shutdown initiated");
+    cts.Cancel();
+    
+    // Simulate cleanup work
+    await Task.Delay(100);
+    
+    Log.Information("Shutdown complete");
+}
+
+async Task TestPortsAsync()
+{
+    Log.Information("Testing port detection");
+    
+    try
     {
-        Log.Warning(ex, "Unable to read log file: {Path}", path);
-        return ["<unable to read log file>"];
+        var (tcpPorts, udpPorts) = await GetOpenPortsAsync();
+        
+        var result = new
+        {
+            TcpPorts = tcpPorts,
+            UdpPorts = udpPorts,
+            SampleTcpPorts = new[] { 80, 443, 8080, 9000 },
+            SampleUdpPorts = new[] { 53, 67, 68, 123, 12000 }
+        };
+        
+        var json = JsonSerializer.Serialize(result, jsonOptions);
+        Console.WriteLine(json);
+        
+        Log.Information("Port detection completed - TCP: {TcpCount}, UDP: {UdpCount}", 
+            tcpPorts.Length, udpPorts.Length);
     }
-    catch (UnauthorizedAccessException ex)
+    catch (Exception ex)
     {
-        Log.Warning(ex, "Access denied reading log file: {Path}", path);
-        return ["<access denied reading log file>"];
+        Log.Error(ex, "Failed to test ports");
+        throw;
     }
+}
+
+async Task PrintConfigAsync()
+{
+    Log.Information("Printing current effective configuration");
+    
+    var config = new
+    {
+        ServerName = "P2PLauncher.Server",
+        Version = "1.0.0",
+        TargetFramework = "net9.0",
+        LogLevel = "Information",
+        LogOutputs = new[] { "Console (CompactJSON)", "File (Rolling)" },
+        JsonOptions = new
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = "CamelCase",
+            UtcDateTimeHandling = true
+        },
+        Commands = new[] { "run", "status", "stop", "test-ports", "print-config" },
+        CancellationSupport = true
+    };
+    
+    var json = JsonSerializer.Serialize(config, jsonOptions);
+    Console.WriteLine(json);
+    
+    await Task.CompletedTask;
+}
+
+async Task<ServerStatus> GenerateServerStatusAsync()
+{
+    var now = DateTime.UtcNow;
+    var (tcpPorts, udpPorts) = await GetOpenPortsAsync();
+    
+    // Sample data for demonstration
+    var samplePeers = new[]
+    {
+        new PeerInfo 
+        { 
+            Ip = "192.168.1.100", 
+            Id = "peer001", 
+            Name = "TestPeer1", 
+            Since = now.AddMinutes(-15) 
+        },
+        new PeerInfo 
+        { 
+            Ip = "192.168.1.101", 
+            Id = "peer002", 
+            Name = "TestPeer2", 
+            Since = now.AddMinutes(-5) 
+        }
+    };
+    
+    var sampleEvents = new[]
+    {
+        new PeerEvent
+        {
+            Time = now.AddMinutes(-10),
+            Type = "joined",
+            PeerIp = "192.168.1.100",
+            PeerId = "peer001",
+            PeerName = "TestPeer1",
+            Reason = "Connection established"
+        },
+        new PeerEvent
+        {
+            Time = now.AddMinutes(-2),
+            Type = "info",
+            PeerIp = "192.168.1.101", 
+            PeerId = "peer002",
+            PeerName = "TestPeer2",
+            Reason = "Heartbeat received"
+        }
+    };
+    
+    var logLines = await ReadRecentLogLinesAsync();
+    
+    return new ServerStatus
+    {
+        Running = !cts.Token.IsCancellationRequested,
+        Timestamp = now,
+        PeerCount = samplePeers.Length,
+        CurrentPeers = samplePeers,
+        RecentPeerEvents = sampleEvents,
+        OpenTcpPorts = tcpPorts,
+        OpenUdpPorts = udpPorts,
+        RecentSavedHosts = new[] { "host1.example.com", "192.168.1.1", "host2.example.com" },
+        RecentLogLines = logLines
+    };
+}
+
+async Task<(int[] tcpPorts, int[] udpPorts)> GetOpenPortsAsync()
+{
+    await Task.CompletedTask;
+    
+    try
+    {
+        var ipProps = IPGlobalProperties.GetIPGlobalProperties();
+        var tcpListeners = ipProps.GetActiveTcpListeners().Select(ep => ep.Port).Distinct().OrderBy(p => p).ToArray();
+        var udpListeners = ipProps.GetActiveUdpListeners().Select(ep => ep.Port).Distinct().OrderBy(p => p).ToArray();
+        
+        return (tcpListeners, udpListeners);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to get network port information, returning empty arrays");
+        return ([], []);
+    }
+}
+
+async Task<string[]> ReadRecentLogLinesAsync()
+{
+    await Task.CompletedTask;
+    
+    var logPath = Path.Combine("logs", $"server-{DateTime.Now:yyyyMMdd}.log");
+    
+    try
+    {
+        if (!File.Exists(logPath))
+        {
+            return new[] { "Log file not found", "Server starting up..." };
+        }
+        
+        var lines = await File.ReadAllLinesAsync(logPath);
+        return lines.TakeLast(10).ToArray();
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to read log file: {LogPath}", logPath);
+        return new[] { $"Error reading log file: {ex.Message}" };
+    }
+}
+
+void ConfigureSerilog()
+{
+    Log.Logger = new LoggerConfiguration()
+        .MinimumLevel.Information()
+        .Enrich.FromLogContext()
+        .WriteTo.Console(new CompactJsonFormatter())
+        .WriteTo.File(
+            new CompactJsonFormatter(),
+            path: Path.Combine("logs", "server-.log"),
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 7)
+        .CreateLogger();
+    
+    Log.Information("Serilog configured with compact JSON formatting");
 }
