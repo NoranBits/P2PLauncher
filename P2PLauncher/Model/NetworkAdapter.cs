@@ -1,25 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Management;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 
 namespace P2PLauncher.Model
 {
+    [SuppressMessage("Design", "CA1515:Consider making public types internal", Justification = "Used by public NetworkAdapters API and UI bindings.")]
     public class NetworkAdapter
     {
-        public string Description { get; set; }
-        public string ID { get; set; }
-        public string Manufacturer { get; set; }
-        public string Name { get; set; }
-        public string ConnectionId { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string ID { get; set; } = string.Empty;
+        public string Manufacturer { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string ConnectionId { get; set; } = string.Empty;
         public bool Enabled { get; set; }
-        public string ProductName { get; set; }
-        public string ServiceName { get; set; }
-
-
+        public string ProductName { get; set; } = string.Empty;
+        public string ServiceName { get; set; } = string.Empty;
 
         /// <summary>
         /// Generates NetworkAdapter object based on WMI data
@@ -28,46 +23,43 @@ namespace P2PLauncher.Model
         /// <returns>Filled in NetworkAdapter object.</returns>
         public NetworkAdapter FromWMI(ManagementBaseObject managementBaseObject)
         {
-            this.Description = (string)managementBaseObject["Description"];
-            this.ID = (string)managementBaseObject["DeviceID"];
-            this.Manufacturer = (string)managementBaseObject["Manufacturer"];
-            this.Name = (string)managementBaseObject["Name"];
-            this.ConnectionId = (string)managementBaseObject["NetConnectionID"];
-            //this.Enabled = (bool)managementBaseObject["NetEnabled"];
-            this.ProductName = (string)managementBaseObject["ProductName"];
-            this.ServiceName = (string)managementBaseObject["ServiceName"];
+            ArgumentNullException.ThrowIfNull(managementBaseObject);
+
+            Description = managementBaseObject[nameof(Description)] as string ?? string.Empty;
+            ID = managementBaseObject["DeviceID"] as string ?? string.Empty;
+            Manufacturer = managementBaseObject[nameof(Manufacturer)] as string ?? string.Empty;
+            Name = managementBaseObject[nameof(Name)] as string ?? string.Empty;
+            ConnectionId = managementBaseObject["NetConnectionID"] as string ?? string.Empty;
+            // Enabled could be null in some adapters; keep default when not present
+            // var enabled = managementBaseObject["NetEnabled"] as bool?;
+            ProductName = managementBaseObject[nameof(ProductName)] as string ?? string.Empty;
+            ServiceName = managementBaseObject[nameof(ServiceName)] as string ?? string.Empty;
             return this;
         }
 
-        /// <summary>
-        /// Returns representation of this object in string.
-        /// </summary>
-        /// <returns>String containing all data stored in this object.</returns>
         public override string ToString()
         {
-            return $"{Name}";
+            return Name;
         }
 
         public void Enable()
         {
-            ProcessStartInfo psi =
-           new ProcessStartInfo("netsh", "interface set interface \"" + ConnectionId + "\" enable");
-            Process p = new Process();
-            p.StartInfo = psi;
-            p.StartInfo.CreateNoWindow = true;
-            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            p.Start();
+            var psi = new ProcessStartInfo("netsh", $"interface set interface \"{ConnectionId}\" enable")
+            {
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+            using var p = Process.Start(psi);
         }
+
         public void Disable()
         {
-            ProcessStartInfo psi =
-                        new ProcessStartInfo("netsh", "interface set interface \"" + ConnectionId + "\" disable");
-            Process p = new Process();
-            p.StartInfo = psi;
-            p.StartInfo.CreateNoWindow = true;
-            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            p.Start();
+            var psi = new ProcessStartInfo("netsh", $"interface set interface \"{ConnectionId}\" disable")
+            {
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+            using var p = Process.Start(psi);
         }
-        
     }
 }

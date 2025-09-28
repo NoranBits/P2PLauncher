@@ -1,33 +1,22 @@
-﻿using P2PLauncher.Model;
+﻿using System.Diagnostics.CodeAnalysis;
+using P2PLauncher.Model;
 using P2PLauncher.Services;
 using P2PLauncher.Utils;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace P2PLauncher.View
 {
     /// <summary>
     /// Interaction logic for FreeLanDetectionWindow.xaml
     /// </summary>
-    public partial class FreeLanDetectionWindow : Window, IWindow
+    [SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated via XAML")]
+    internal sealed partial class FreeLanDetectionWindow : Window, IWindow
     {
         private readonly FreeLanDetectionService freeLanDetectionService;
         private readonly IFileService fileService;
         private readonly IDialogService dialogService;
-        private bool FreeLanAutoDetectFailed = false;
+        private bool FreeLanAutoDetectFailed;
         private FreeLanInstallationStatus FreeLanInstallationStatus;
 
         private void SetStatus(string statusContent)
@@ -46,29 +35,25 @@ namespace P2PLauncher.View
         }
         private void OnFindFreeLanButton(object sender, RoutedEventArgs e)
         {
-            bool result = freeLanDetectionService.FindFreeLan();
+            var result = freeLanDetectionService.FindFreeLan();
             FreeLanAutoDetectFailed = !result;
             UpdateWindow();
-            if (result)
-                MessageBox.Show("FreeLan found! You can close this window now!", "Located!");
-            else
-            {
-                MessageBox.Show("You need to find FreeLan by locating it manually!", "Could not locate.");
-            }
+            _ = result
+                ? MessageBox.Show("FreeLan found! You can close this window now!", "Located!")
+                : MessageBox.Show("You need to find FreeLan by locating it manually!", "Could not locate.");
         }
         private void OnSelectFreeLanPathButton(object sender, RoutedEventArgs e)
         {
-            bool result = freeLanDetectionService.SelectPath();
+            var result = freeLanDetectionService.SelectPath();
             UpdateWindow();
             if (!result)
-                MessageBox.Show("Something went wrong while selecting file!", "Try again!");
-
-
-            
+            {
+                _ = MessageBox.Show("Something went wrong while selecting file!", "Try again!");
+            }
         }
         private void OnDownloadFreeLanButton(object sender, RoutedEventArgs e)
         {
-            Process.Start(freeLanDetectionService.GetDownloadUrl());
+            _ = Process.Start(freeLanDetectionService.GetDownloadUrl());
         }
 
         private void SetDownloadFreeLanHintLabel(string content)
@@ -100,33 +85,50 @@ namespace P2PLauncher.View
                 "You need to download x86 (32-bit) version.");
 
             if (currentStatus != FreeLanInstallationStatus)
+            {
                 UpdateWindowAcknowledgeChange(currentStatus);
+            }
 
-
-            switch(currentStatus)
+            switch (currentStatus)
             {
                 case FreeLanInstallationStatus.OK:
                     SetFindFreeLanButtonVisibility(false);
                     SetFreeLanLocationTabControlVisibility(false);
                     break;
+                case FreeLanInstallationStatus.UNK:
+                    break;
+                case FreeLanInstallationStatus.CONFIG_NOT_SET:
+                    break;
+                case FreeLanInstallationStatus.INVALID_PATH:
+                    break;
+                default:
+                    break;
             }
 
             FreeLanInstallationStatus = currentStatus;
-            
+
         }
 
-        private void UpdateWindowAcknowledgeChange(FreeLanInstallationStatus newStatus)
+        private static void UpdateWindowAcknowledgeChange(FreeLanInstallationStatus newStatus)
         {
             switch (newStatus)
             {
                 case FreeLanInstallationStatus.OK:
-                    MessageBox.Show("FreeLan found! You can close this window now.", "Ok!");
+                    _ = MessageBox.Show("FreeLan found! You can close this window now.", "Ok!");
+                    break;
+                case FreeLanInstallationStatus.UNK:
+                    break;
+                case FreeLanInstallationStatus.CONFIG_NOT_SET:
+                    break;
+                case FreeLanInstallationStatus.INVALID_PATH:
+                    break;
+                default:
                     break;
             }
 
         }
 
-        
+
 
     }
 }

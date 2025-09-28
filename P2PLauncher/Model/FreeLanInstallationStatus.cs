@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 namespace P2PLauncher.Model
 {
@@ -14,7 +10,8 @@ namespace P2PLauncher.Model
     /// INVALID_PATH: Path in the config file does no (longer) exist.
     /// OK: Path in the config file does exist.
     /// </summary>
-    public enum FreeLanInstallationStatus
+    [SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Existing persisted values and comparisons; renaming is a breaking change.")]
+    internal enum FreeLanInstallationStatus
     {
         [Description("Status is unknown.")]
         UNK,

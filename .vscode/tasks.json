@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/clean.ps1"],
+            "problemMatcher": []
+        },
+        {
+            "label": "build:all",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/build.ps1","-Target","all","-Configuration","Release"],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build:client",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/build.ps1","-Target","client","-Configuration","Release"],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build:server",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/build.ps1","-Target","server","-Configuration","Release"],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish:all",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/publish.ps1","-Target","all","-Configuration","Release"],
+            "problemMatcher": []
+        },
+        {
+            "label": "publish:server:self-contained",
+            "type": "shell",
+            "command": "powershell",
+            "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}/scripts/publish.ps1","-Target","server","-Configuration","Release","-SelfContained","-Runtime","win-x64"],
+            "problemMatcher": []
+        }
+    ]
+}

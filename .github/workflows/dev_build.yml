@@ -1,5 +1,4 @@
-
-# This is a basic workflow to help you get started with Actions
+# Basic workflow to help you get started with Actions
 
 name: CI Dev
 
@@ -20,37 +19,87 @@ jobs:
     # The type of runner that the job will run on
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Get the version
-        id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-        shell: bash
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.0.2
-      - name: Build it (Debug)
-        run: msbuild /t:Build /p:Configuration=Debug
-      - uses: papeloto/action-zip@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
         with:
-          files: P2PLauncher/bin/Debug/
-          dest: debug.zip
-      - name: Create Release
+          dotnet-version: '9.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\NuGet\v3-cache
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Get version
+        id: vars
+        shell: pwsh
+        run: |
+          $v = $env:GITHUB_REF -replace '^refs/tags/',''
+          echo "VERSION=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore ./P2PLauncher.sln
+
+      - name: Build (Debug)
+        run: dotnet build ./P2PLauncher.sln -c Debug --no-restore
+
+      - name: Publish dev/debug artifacts
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Target all -Configuration Debug
+
+      - name: Upload artifacts (Dev)
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2p-launcher-dev-${{ steps.vars.outputs.VERSION }}
+          path: |
+            artifacts/client/P2PLauncher-client-Dev.zip
+            artifacts/client/P2PLauncher-standalone-Dev.zip
+            artifacts/server/P2PLauncher-server-Dev.zip
+
+      - name: Create Release (draft)
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          release_name: Dev ${{ steps.vars.outputs.VERSION }}
           body_path: changelog.md
           draft: true
-          prerelease: false
-      - name: Upload Release Asset
-        id: upload-release-asset-release
+          prerelease: true
+
+      - name: Upload Dev Asset - Client
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./debug.zip
-          asset_name: p2p-launcher-${{ steps.get_version.outputs.VERSION }}.zip
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/client/P2PLauncher-client-Dev.zip
+          asset_name: p2p-launcher-client-Dev-${{ steps.vars.outputs.VERSION }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Dev Asset - Standalone Client
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/client/P2PLauncher-standalone-Dev.zip
+          asset_name: p2p-launcher-standalone-Dev-${{ steps.vars.outputs.VERSION }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Dev Asset - Server
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/server/P2PLauncher-server-Dev.zip
+          asset_name: p2p-launcher-server-Dev-${{ steps.vars.outputs.VERSION }}.zip
           asset_content_type: application/zip

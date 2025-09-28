@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace P2PLauncher
+﻿namespace P2PLauncher
 {
-    class Config
+    internal static class Config
     {
     }
 }

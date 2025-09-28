@@ -1,0 +1,23 @@
+root = true
+
+[*.cs]
+# Treat many analyzer categories as warnings by default
+dotnet_analyzer_diagnostic.category-Style.severity = warning
+dotnet_analyzer_diagnostic.category-Maintainability.severity = warning
+dotnet_analyzer_diagnostic.category-Reliability.severity = warning
+dotnet_analyzer_diagnostic.category-Security.severity = warning
+
+# Individual rule overrides
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.CA1031.severity = warning
+dotnet_diagnostic.CA1062.severity = warning
+csharp_prefer_braces = true:warning
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+[*.{xaml}]
+indent_size = 2
+
+[*.{csproj,pwsh,ps1,md}]
+indent_style = space

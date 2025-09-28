@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Net;
 using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net.Http;
+using System.IO;
 
 namespace P2PLauncher.Utils
 {
-    public static class EnvHelper
+    internal static class EnvHelper
     {
         /// <summary>
         /// Get Program Files path (x64)
@@ -35,8 +30,10 @@ namespace P2PLauncher.Utils
 
         public static string GetMemberName<T>(Expression<Func<T>> memberExpression)
         {
-            MemberExpression expressionBody = (MemberExpression)memberExpression.Body;
-            return expressionBody.Member.Name;
+            ArgumentNullException.ThrowIfNull(memberExpression);
+            return memberExpression.Body is not MemberExpression expressionBody
+                ? throw new ArgumentException("Expression body must be a MemberExpression", nameof(memberExpression))
+                : expressionBody.Member.Name;
         }
 
         public static bool Is64Bit()
@@ -46,43 +43,49 @@ namespace P2PLauncher.Utils
 
         public static string Base64Encode(string plainText)
         {
+            ArgumentNullException.ThrowIfNull(plainText);
             var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
-            return System.Convert.ToBase64String(plainTextBytes);
+            return Convert.ToBase64String(plainTextBytes);
         }
 
         public static string Base64Decode(string base64EncodedData)
         {
-            var base64EncodedBytes = System.Convert.FromBase64String(base64EncodedData);
+            ArgumentNullException.ThrowIfNull(base64EncodedData);
+            var base64EncodedBytes = Convert.FromBase64String(base64EncodedData);
             return System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
         }
         public static bool IsAdministrator()
         {
-            return (new WindowsPrincipal(WindowsIdentity.GetCurrent()))
-                      .IsInRole(WindowsBuiltInRole.Administrator);
+            return new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
         }
         public static string GetPublicAddress()
         {
             try
             {
-               return  new WebClient().DownloadString("http://icanhazip.com");
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                var ip = http.GetStringAsync(new Uri("https://api.ipify.org")).GetAwaiter().GetResult();
+                return ip.Trim();
             }
-            catch(Exception ex)
+            catch (HttpRequestException ex)
             {
                 ExceptionHelper.ShowMessageBox(ex);
-                return "127.0.0.1";
+                return "Unknown";
+            }
+            catch (TaskCanceledException ex)
+            {
+                ExceptionHelper.ShowMessageBox(ex);
+                return "Unknown";
             }
         }
 
         public static void OpenNotepadWithFile(string fileLocation)
         {
-            Process.Start("notepad.exe", fileLocation);
+            _ = Process.Start("notepad.exe", fileLocation);
         }
 
         public static bool FileExists(string fileLocation)
         {
             return File.Exists(fileLocation);
         }
-
-
     }
 }

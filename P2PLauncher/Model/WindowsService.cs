@@ -1,27 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace P2PLauncher.Model
 {
-    public class WindowsService
+    internal sealed class WindowsService
     {
-        public string DisplayName { get; set; }
-        public string Name { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
         public ServiceType Type { get; set; }
         public ServiceControllerStatus Status { get; set; }
 
         public WindowsService FromServiceController(ServiceController serviceController)
         {
-            this.DisplayName = serviceController.DisplayName;
-            this.Name = serviceController.ServiceName;
-            this.Type = serviceController.ServiceType;
-            this.Status = serviceController.Status;
-
+            ArgumentNullException.ThrowIfNull(serviceController);
+            DisplayName = serviceController.DisplayName;
+            Name = serviceController.ServiceName;
+            Type = serviceController.ServiceType;
+            Status = serviceController.Status;
             return this;
         }
 
@@ -32,24 +28,76 @@ namespace P2PLauncher.Model
 
         public void Enable()
         {
-            Process p = new Process();
-            ProcessStartInfo psi = new ProcessStartInfo("net", "start \"" + Name + "\" /y");
-            p.StartInfo = psi;
-            p.StartInfo.CreateNoWindow = true;
-            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            p.Start();  
+            try
+            {
+                using ServiceController sc = new(Name);
+                if (sc.Status == ServiceControllerStatus.Running)
+                {
+                    return;
+                }
+
+                sc.Start();
+                sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
+            }
+            catch (InvalidOperationException)
+            {
+                var psi = new ProcessStartInfo("net", $"start \"{Name}\" /y")
+                {
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                using var p = Process.Start(psi);
+            }
+            catch (Win32Exception)
+            {
+                var psi = new ProcessStartInfo("net", $"start \"{Name}\" /y")
+                {
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                using var p = Process.Start(psi);
+            }
+            catch (System.ServiceProcess.TimeoutException)
+            {
+                // ignore timeout; state might still be transitioning
+            }
         }
+
         public void Disable()
         {
-            ProcessStartInfo psi =
-                        new ProcessStartInfo("net", "stop \"" + Name + "\" /y");
-            Process p = new Process();
-            p.StartInfo = psi;
-            p.StartInfo.CreateNoWindow = true;
-            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            p.Start();
+            try
+            {
+                using ServiceController sc = new(Name);
+                if (sc.Status == ServiceControllerStatus.Stopped)
+                {
+                    return;
+                }
+
+                sc.Stop();
+                sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(15));
+            }
+            catch (InvalidOperationException)
+            {
+                var psi = new ProcessStartInfo("net", $"stop \"{Name}\" /y")
+                {
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                using var p = Process.Start(psi);
+            }
+            catch (Win32Exception)
+            {
+                var psi = new ProcessStartInfo("net", $"stop \"{Name}\" /y")
+                {
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                using var p = Process.Start(psi);
+            }
+            catch (System.ServiceProcess.TimeoutException)
+            {
+                // ignore timeout; state might still be transitioning
+            }
         }
-
-
     }
 }

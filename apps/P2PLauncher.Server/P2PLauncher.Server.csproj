@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>P2PLauncher.Server</AssemblyName>
+    <RootNamespace>P2PLauncher.Server</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="Serilog" Version="3.1.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageReference Include="System.Management" Version="9.0.8" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Link shared code directly from the client project -->
+    <!-- Exceptions -->
+    <Compile Include="..\..\P2PLauncher\Exceptions\*.cs" Link="Exceptions\%(Filename)%(Extension)" />
+    <!-- Services -->
+    <Compile Include="..\..\P2PLauncher\Services\IDialogService.cs" Link="Services\IDialogService.cs" />
+    <Compile Include="..\..\P2PLauncher\Services\IFileService.cs" Link="Services\IFileService.cs" />
+    <Compile Include="..\..\P2PLauncher\Services\WinDialogService.cs" Link="Services\WinDialogService.cs" />
+    <Compile Include="..\..\P2PLauncher\Services\WinFileService.cs" Link="Services\WinFileService.cs" />
+    <Compile Include="..\..\P2PLauncher\Services\FreeLanService.cs" Link="Services\FreeLanService.cs" />
+    <Compile Include="..\..\P2PLauncher\Services\FreeLanDetectionService.cs" Link="Services\FreeLanDetectionService.cs" />
+    <!-- Model -->
+    <Compile Include="..\..\P2PLauncher\Model\AddressType.cs" Link="Model\AddressType.cs" />
+    <Compile Include="..\..\P2PLauncher\Model\FreeLanMode.cs" Link="Model\FreeLanMode.cs" />
+    <Compile Include="..\..\P2PLauncher\Model\FreeLanInstallationStatus.cs" Link="Model\FreeLanInstallationStatus.cs" />
+    <Compile Include="..\..\P2PLauncher\Model\WindowsService.cs" Link="Model\WindowsService.cs" />
+    <Compile Include="..\..\P2PLauncher\Model\WindowsServices.cs" Link="Model\WindowsServices.cs" />
+    <!-- Utils -->
+    <Compile Include="..\..\P2PLauncher\Utils\EnvHelper.cs" Link="Utils\EnvHelper.cs" />
+    <Compile Include="..\..\P2PLauncher\Utils\AddressHelper.cs" Link="Utils\AddressHelper.cs" />
+    <Compile Include="..\..\P2PLauncher\Utils\ExceptionHelper.cs" Link="Utils\ExceptionHelper.cs" />
+    <!-- Settings (for FreeLan path persistence) -->
+    <Compile Include="..\..\P2PLauncher\Properties\Settings.Designer.cs" Link="Properties\Settings.Designer.cs" />
+  </ItemGroup>
+  <PropertyGroup>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+  </PropertyGroup>
+</Project>

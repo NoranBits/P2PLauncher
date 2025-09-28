@@ -1,31 +1,29 @@
 ﻿using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace P2PLauncher.Services
 {
-    public class WinDialogService : IDialogService
+    internal sealed class WinDialogService : IDialogService
     {
-        public string FilePath { get; set; }
+        public string FilePath { get; set; } = string.Empty;
 
         public bool OpenFileDialog()
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            if(openFileDialog.ShowDialog() == true)
+            OpenFileDialog openFileDialog = new();
+            var result = openFileDialog.ShowDialog();
+            if (result == true)
             {
                 FilePath = openFileDialog.FileName;
                 return true;
             }
+
             return false;
         }
 
         public void ShowMessage(string message, string title)
         {
-            MessageBox.Show(message, title);
+            // Use MessageBoxResult to satisfy analyzer that the return value was considered
+            _ = MessageBox.Show(message, title);
         }
     }
 }

@@ -1,44 +1,39 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace P2PLauncher.Model
 {
-    public class WindowsServices
+    internal sealed class WindowsServices
     {
+        [SuppressMessage("Performance", "CA1822:Mark members as static")]
         public List<WindowsService> GetServices()
         {
-            List<WindowsService> windowsServices = new List<WindowsService>();
+            List<WindowsService> windowsServices = [];
 
             ServiceController[] services = ServiceController.GetServices();
 
-            foreach(ServiceController service in services)
+            foreach (ServiceController service in services)
             {
                 windowsServices.Add(new WindowsService().FromServiceController(service));
             }
             return windowsServices;
         }
 
-        public WindowsService GetServiceByName(string serviceName)
+        [SuppressMessage("Performance", "CA1822:Mark members as static")]
+        public WindowsService? GetServiceByName(string serviceName)
         {
-            ServiceController controller = ServiceController.GetServices().FirstOrDefault(serviceController => serviceController.ServiceName.Equals(serviceName));
-            if(controller == null)
-            {
-                return null;
-            }
-            return new WindowsService().FromServiceController(controller);
+            ServiceController? controller = ServiceController.GetServices()
+                .FirstOrDefault(sc => sc.ServiceName.Equals(serviceName, StringComparison.Ordinal));
+            return controller == null ? null : new WindowsService().FromServiceController(controller);
         }
 
         public List<WindowsService> GetServicesWithType(ServiceType serviceType)
         {
-            List<WindowsService> withType = new List<WindowsService>();
+            List<WindowsService> withType = [];
 
-            foreach(WindowsService service in GetServices())
+            foreach (WindowsService service in GetServices())
             {
-                if(service.Type == serviceType)
+                if (service.Type == serviceType)
                 {
                     withType.Add(service);
                 }
@@ -48,11 +43,11 @@ namespace P2PLauncher.Model
 
         public List<WindowsService> GetServicesToDisable()
         {
-            string[] toDisable = GetServiceNamesToDisable();
-            List<WindowsService> toDisableList = new List<WindowsService>();
-            foreach(WindowsService w in GetServices())
+            var toDisable = GetServiceNamesToDisable();
+            List<WindowsService> toDisableList = [];
+            foreach (WindowsService w in GetServices())
             {
-                if(toDisable.Contains(w.Name))
+                if (toDisable.Contains(w.Name, StringComparer.Ordinal))
                 {
                     toDisableList.Add(w);
                 }
@@ -61,30 +56,21 @@ namespace P2PLauncher.Model
 
         }
 
+        [SuppressMessage("Performance", "CA1822:Mark members as static")]
         public void SaveServicesToDisable(List<WindowsService> services)
         {
-            string toSave = "";
-            for(int i =0; i< services.Count; i++)
-            {
-                toSave += services[i].Name;
-                if(i != services.Count - 1)
-                {
-                    toSave += ",";
-                }
-            }
+            var toSave = string.Join(",", services.Select(s => s.Name));
             Properties.Settings.Default.ServicesToDisable = toSave;
             Properties.Settings.Default.Save();
             Properties.Settings.Default.Upgrade();
             Properties.Settings.Default.Reload();
         }
+
+        [SuppressMessage("Performance", "CA1822:Mark members as static")]
         public string[] GetServiceNamesToDisable()
         {
-            string saved = Properties.Settings.Default.ServicesToDisable;
-            if(saved == null || saved.Length == 0)
-            {
-                return new string[0];
-            }
-            return saved.Split(',');
+            var saved = Properties.Settings.Default.ServicesToDisable;
+            return string.IsNullOrEmpty(saved) ? [] : saved.Split(',');
         }
 
     }
